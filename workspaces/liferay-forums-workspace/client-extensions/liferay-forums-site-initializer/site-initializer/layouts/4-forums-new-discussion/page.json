@@ -8,5 +8,27 @@
 		"en_US": "New Discussion"
 	},
 	"private": false,
+	"permissions": [
+		{
+			"actionIds": [
+			],
+			"roleName": "Guest",
+			"scope": 4
+		},
+		{
+			"actionIds": [
+				"VIEW"
+			],
+			"roleName": "Site Member",
+			"scope": 4
+		},
+		{
+			"actionIds": [
+				"VIEW"
+			],
+			"roleName": "User",
+			"scope": 4
+		}
+	],
 	"type": "content"
 }

@@ -14,7 +14,7 @@
 		],
 		"primKey": "0",
 		"resourceName": "[$OBJECT_DEFINITION_CLASS_NAME:ForumBan$]",
-		"roleName": "Site Member",
+		"roleName": "User",
 		"scope": 1
 	},
 	{
@@ -32,7 +32,7 @@
 		],
 		"primKey": "0",
 		"resourceName": "[$OBJECT_DEFINITION_CLASS_NAME:ForumCategory$]",
-		"roleName": "Site Member",
+		"roleName": "User",
 		"scope": 1
 	},
 	{
@@ -50,7 +50,7 @@
 		],
 		"primKey": "0",
 		"resourceName": "[$OBJECT_DEFINITION_CLASS_NAME:ForumMessage$]",
-		"roleName": "Site Member",
+		"roleName": "User",
 		"scope": 1
 	},
 	{
@@ -68,7 +68,7 @@
 		],
 		"primKey": "0",
 		"resourceName": "[$OBJECT_DEFINITION_CLASS_NAME:ForumMessageAttachment$]",
-		"roleName": "Site Member",
+		"roleName": "User",
 		"scope": 1
 	},
 	{
@@ -104,7 +104,7 @@
 		],
 		"primKey": "0",
 		"resourceName": "[$OBJECT_DEFINITION_CLASS_NAME:ForumSuspiciousActivity$]",
-		"roleName": "Site Member",
+		"roleName": "User",
 		"scope": 1
 	},
 	{
@@ -122,7 +122,7 @@
 		],
 		"primKey": "0",
 		"resourceName": "[$OBJECT_DEFINITION_CLASS_NAME:ForumThread$]",
-		"roleName": "Site Member",
+		"roleName": "User",
 		"scope": 1
 	},
 	{
@@ -140,7 +140,7 @@
 		],
 		"primKey": "0",
 		"resourceName": "[$OBJECT_DEFINITION_CLASS_NAME:ForumThreadFlag$]",
-		"roleName": "Site Member",
+		"roleName": "User",
 		"scope": 1
 	},
 	{
@@ -167,7 +167,7 @@
 		],
 		"primKey": "0",
 		"resourceName": "[$OBJECT_DEFINITION_CLASS_NAME:ForumVote$]",
-		"roleName": "Site Member",
+		"roleName": "User",
 		"scope": 1
 	},
 	{
@@ -231,6 +231,91 @@
 		"primKey": "0",
 		"resourceName": "com.liferay.object#[$OBJECT_DEFINITION_ID:ForumVote$]",
 		"roleName": "User",
+		"scope": 1
+	},
+	{
+		"actionIds": [
+			"VIEW",
+			"UPDATE",
+			"DELETE"
+		],
+		
+		"resourceName": "[$OBJECT_DEFINITION_CLASS_NAME:ForumThread$]",
+		"roleName": "Forum Moderator",
+		"scope": 1
+	},
+	{
+		"actionIds": [
+			"VIEW",
+			"UPDATE",
+			"DELETE"
+		],
+		
+		"resourceName": "[$OBJECT_DEFINITION_CLASS_NAME:ForumMessage$]",
+		"roleName": "Forum Moderator",
+		"scope": 1
+	},
+	{
+		"actionIds": [
+			"VIEW",
+			"UPDATE",
+			"DELETE"
+		],
+		
+		"resourceName": "[$OBJECT_DEFINITION_CLASS_NAME:ForumThreadFlag$]",
+		"roleName": "Forum Moderator",
+		"scope": 1
+	},
+	{
+		"actionIds": [
+			"VIEW",
+			"UPDATE",
+			"DELETE"
+		],
+		
+		"resourceName": "[$OBJECT_DEFINITION_CLASS_NAME:ForumSuspiciousActivity$]",
+		"roleName": "Forum Moderator",
+		"scope": 1
+	},
+	{
+		"actionIds": [
+			"VIEW",
+			"UPDATE",
+			"DELETE"
+		],
+		
+		"resourceName": "[$OBJECT_DEFINITION_CLASS_NAME:ForumBan$]",
+		"roleName": "Forum Moderator",
+		"scope": 1
+	},
+	{
+		"actionIds": [
+			"ADD_OBJECT_ENTRY"
+		],
+		
+		"resourceName": "com.liferay.object#[$OBJECT_DEFINITION_ID:ForumBan$]",
+		"roleName": "Forum Moderator",
+		"scope": 1
+	},
+	{
+		"actionIds": [
+			"VIEW",
+			"UPDATE",
+			"DELETE",
+			"PERMISSIONS"
+		],
+		
+		"resourceName": "[$OBJECT_DEFINITION_CLASS_NAME:ForumCategory$]",
+		"roleName": "Forum Category Admin",
+		"scope": 1
+	},
+	{
+		"actionIds": [
+			"ADD_OBJECT_ENTRY"
+		],
+		
+		"resourceName": "com.liferay.object#[$OBJECT_DEFINITION_ID:ForumCategory$]",
+		"roleName": "Forum Category Admin",
 		"scope": 1
 	}
 ]
