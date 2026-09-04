@@ -46,6 +46,13 @@ liferay-forums-etc-spring-boot-object-validation-rule-ban:
     oAuth2ApplicationExternalReferenceCode: liferay-forums-etc-spring-boot-oaua
     resourcePath: /object-validation-rule/ban
     type: objectValidationRule
+liferay-forums-etc-spring-boot-object-validation-rule-check-already-banned:
+        allowedObjectDefinitionNames:
+            - C_ForumBan
+        name: Liferay Forums Etc Spring Boot Object Validation Rule Check Already Banned
+        oAuth2ApplicationExternalReferenceCode: liferay-forums-etc-spring-boot-oaua
+        resourcePath: /object-validation-rule/checkUserAlreadyBanned
+        type: objectValidationRule
 liferay-forums-etc-spring-boot-object-validation-rule-priority:
     allowedObjectDefinitionNames:
         -   C_ForumThread

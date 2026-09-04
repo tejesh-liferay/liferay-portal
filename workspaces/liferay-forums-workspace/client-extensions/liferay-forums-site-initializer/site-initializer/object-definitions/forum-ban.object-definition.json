@@ -32,6 +32,21 @@
 		}
 	],
 	"objectFolderExternalReferenceCode": "FORUMS-FOLDER",
+	"objectValidationRules": [
+		{
+			"active": true,
+			"engine": "function#liferay-forums-etc-spring-boot-object-validation-rule-check-already-banned",
+			"errorLabel": {
+				"en_US": "User already banned"
+			},
+			"externalReferenceCode": "FORUM-MESSAGE-CHECK-BAN-VALIDATION",
+			"name": {
+				"en_US": "Check if already banned"
+			},
+			"outputType": "fullValidation",
+			"script": ""
+		}
+	],
 	"panelCategoryKey": "",
 	"parameterRequired": false,
 	"pluralLabel": {

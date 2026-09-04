@@ -202,6 +202,48 @@ if (forumsMod) {
 		}
 	};
 
+	const showErrorToast = function (message) {
+		if (Liferay.Util && Liferay.Util.openToast) {
+			Liferay.Util.openToast({
+				message: Liferay.Util.escapeHTML(message),
+				type: 'danger',
+			});
+		}
+	};
+
+	/* An object validation rule failure comes back as a problem detail
+	   whose own "detail" field is itself a JSON-encoded array of
+	   {errorMessage} entries, e.g.:
+	   {"detail": "[{\"errorMessage\":\"User already banned\"}]", ...} */
+	const parseValidationErrorMessage = function (problemDetailJSONObject) {
+		try {
+			const detailJSONArray = JSON.parse(
+				problemDetailJSONObject.detail
+			);
+			const messages = (Array.isArray(detailJSONArray)
+				? detailJSONArray
+				: [detailJSONArray]
+			)
+				.map((entry) => entry && entry.errorMessage)
+				.filter(Boolean);
+
+			if (messages.length) {
+				return messages.join(' ');
+			}
+		}
+		catch (error) {
+
+			// "detail" wasn't the nested validation-rule JSON array shape
+
+		}
+
+		return (
+			problemDetailJSONObject.title ||
+			problemDetailJSONObject.detail ||
+			null
+		);
+	};
+
 	/* Tab click handlers */
 	forumsMod.querySelectorAll('#forumsModTabs .nav-link').forEach((tab) => {
 		tab.addEventListener('click', function (event) {
@@ -472,14 +514,36 @@ if (forumsMod) {
 			pageSize +
 			buildFilterParam();
 
-		Liferay.Util.fetch(url, {
-			headers,
-			method: 'GET',
-		})
+
+		const bannedUserIdsPromise = Liferay.Util.fetch(
+			portalURL +
+				'/o/c/forumbans/scopes/' +
+				scopeGroupId +
+				'?fields=banUserId&pageSize=200',
+			{headers, method: 'GET'}
+		)
 			.then((r) => {
 				return r.json();
 			})
-			.then((data) => {
+			.then((banData) => {
+				return new Set(
+					(banData.items || []).map((ban) =>
+						String(ban.banUserId)
+					)
+				);
+			})
+			.catch(() => new Set());
+
+		Promise.all([
+			Liferay.Util.fetch(url, {
+				headers,
+				method: 'GET',
+			}).then((r) => {
+				return r.json();
+			}),
+			bannedUserIdsPromise,
+		])
+			.then(([data, bannedUserIds]) => {
 				if (loadingEl) {
 					loadingEl.style.display = 'none';
 				}
@@ -707,57 +771,128 @@ if (forumsMod) {
 						actionsDiv.appendChild(validateBtn);
 					}
 
-					/* Ban Author button (if validated and has author) */
-					if (isValidated && authorId) {
+					/* Ban Author button (if validated, has an author, and
+					   that author isn't already banned) */
+					if (
+						isValidated &&
+						authorId &&
+						!bannedUserIds.has(String(authorId))
+					) {
 						const banBtn = document.createElement('button');
 						banBtn.className = 'btn btn-sm btn-outline-danger';
 						banBtn.textContent =
 							forumsMod.dataset.labelBanAuthor || 'Ban Author';
 						banBtn.addEventListener('click', () => {
-							const message =
-								forumsMod.dataset.labelConfirmBanUser ||
-								'Are you sure you want to ban this user?';
-							showConfirmModal(
-								message,
-								forumsMod.dataset.labelBanAuthor ||
-									'Ban Author',
-								() => {
-									banBtn.disabled = true;
-									Liferay.Util.fetch(
-										portalURL +
-											'/o/c/forumbans/scopes/' +
-											scopeGroupId,
-										{
-											body: JSON.stringify({
-												banUserId: parseInt(
-													authorId,
-													10
-												),
-											}),
-											headers,
-											method: 'POST',
+							banBtn.disabled = true;
+
+							/* Check for an existing ban first — the object
+							   has no unique constraint on banUserId, so a
+							   second POST would create a duplicate row. */
+							Liferay.Util.fetch(
+								portalURL +
+									'/o/c/forumbans/scopes/' +
+									scopeGroupId +
+									'?pageSize=1&filter=' +
+									encodeURIComponent(
+										'banUserId eq ' +
+											parseInt(authorId, 10)
+									),
+								{headers, method: 'GET'}
+							)
+								.then((r) => {
+									return r.json();
+								})
+								.then((data) => {
+									if ((data.items || []).length) {
+										banBtn.style.display = 'none';
+										showToast(
+											forumsMod.dataset
+												.labelUserAlreadyBanned ||
+												'User is already banned.'
+										);
+
+										return;
+									}
+
+									const message =
+										forumsMod.dataset
+											.labelConfirmBanUser ||
+										'Are you sure you want to ban this user?';
+									showConfirmModal(
+										message,
+										forumsMod.dataset.labelBanAuthor ||
+											'Ban Author',
+										() => {
+											Liferay.Util.fetch(
+												portalURL +
+													'/o/c/forumbans/scopes/' +
+													scopeGroupId,
+												{
+													body: JSON.stringify({
+														banUserId: parseInt(
+															authorId,
+															10
+														),
+													}),
+													headers,
+													method: 'POST',
+												}
+											)
+												.then((r) => {
+													if (r.ok) {
+														banBtn.style.display =
+															'none';
+														showToast(
+															forumsMod.dataset
+																.labelUserBanned ||
+																'User has been banned.'
+														);
+														return;
+													}
+													return r
+															.json()
+															.catch(() => null)
+															.then((problemDetailJSONObject) => {
+																const message =
+																	(problemDetailJSONObject &&
+																		parseValidationErrorMessage(
+																			problemDetailJSONObject
+																		)) ||
+																	forumsMod.dataset.labelBanFailed ||
+																	'Unable to ban user.';
+
+																showErrorToast(message);
+																console.error('Ban failed:', message);
+
+																if (
+																	problemDetailJSONObject &&
+																	problemDetailJSONObject.type ===
+																		'ObjectValidationRuleEngineException'
+																) {
+
+																	/* Someone else banned this user between our
+																	   check and this request — resync instead of
+																	   leaving a stale Ban Author button. */
+																	loadFlags();
+																}
+																else {
+																	banBtn.disabled = false;
+																}
+															});
+												})
+												.catch((event) => {
+													banBtn.disabled = false;
+													console.error(event);
+												});
 										}
-									)
-										.then((r) => {
-											if (r.ok) {
-												banBtn.style.display = 'none';
-												showToast(
-													forumsMod.dataset
-														.labelUserBanned ||
-														'User has been banned.'
-												);
-											}
-											else {
-												banBtn.disabled = false;
-												console.error('Ban failed');
-											}
-										})
-										.catch((event) => {
-											banBtn.disabled = false;
-											console.error(event);
-										});
-								}
-							);
+									);
+
+									banBtn.disabled = false;
+								})
+								.catch((event) => {
+									banBtn.disabled = false;
+									console.error(event);
+								});
 						});
 						actionsDiv.appendChild(banBtn);
 					}
