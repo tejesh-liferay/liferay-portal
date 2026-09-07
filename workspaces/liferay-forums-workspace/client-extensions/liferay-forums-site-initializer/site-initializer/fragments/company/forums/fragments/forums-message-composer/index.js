@@ -968,6 +968,7 @@ if (messageComposer) {
 	window.forumsOpenComposeModal = function ({
 		body,
 		categoryId,
+		duplicate,
 		editMode,
 		isOp,
 		isQuestion,
@@ -1039,6 +1040,53 @@ if (messageComposer) {
 			if (categoryId && categorySelect) {
 
 				/* Ensure categories are loaded before setting value */
+				if (!categoriesLoaded) {
+					loadCategories();
+					setTimeout(() => {
+						categorySelect.value = String(categoryId);
+					}, 500);
+				}
+				else {
+					categorySelect.value = String(categoryId);
+				}
+			}
+		}
+		else if (duplicate) {
+
+			/* Duplicate a topic: prefill the plain "new topic" form (not edit
+			   mode, so submitting creates a brand-new thread + message) with a
+			   copy of the source topic's content for the user to review before
+			   posting. */
+			if (subjectInput && subject) {
+				subjectInput.value = subject;
+			}
+			if (questionCheck && isQuestion !== undefined) {
+				questionCheck.checked = isQuestion;
+			}
+			if (prioritySelect) {
+				const priorityValue = String(
+					Math.round(parseFloat(priority)) || 0
+				);
+				prioritySelect.value = priorityValue;
+				if (prioritySelect.value !== priorityValue) {
+					prioritySelect.value = '0';
+				}
+			}
+			if (tags && Array.isArray(tags)) {
+				tagsArray = [].concat(tags);
+				renderTags();
+			}
+			if (body && bodyEditorInstance) {
+				bodyEditorInstance.setData(body);
+			}
+			else if (body) {
+				editorPromise
+					.then((editor) => {
+						editor.setData(body);
+					})
+					.catch(() => {});
+			}
+			if (categoryId && categorySelect) {
 				if (!categoriesLoaded) {
 					loadCategories();
 					setTimeout(() => {

@@ -347,6 +347,13 @@ if (messageDetail) {
 		   on the ForumBan collection, which regular users are never granted. */
 		let isModerator = false;
 
+		/* Whether the current user may create a new thread — the same HATEOAS
+		   create action the New Discussion button (forums-hero /
+		   forums-message-list) checks on the ForumThreads collection. Drives
+		   visibility of the "Duplicate Topic" option, which posts a copy of
+		   this topic as a brand-new thread. */
+		let canCreateThread = false;
+
 		/* Whether replies/edits are currently blocked on this topic. Set from
 		   the thread's own "locked" field once it loads; the server enforces
 		   this authoritatively via the ForumMessage lock validation rule — this
@@ -2400,6 +2407,49 @@ if (messageDetail) {
 								dropdownEditBtn.style.display = 'none';
 							}
 
+							/* Duplicate Topic: opens the shared composer in
+					   plain "new topic" mode (no threadId/editMode), prefilled
+					   with a copy of this topic's content, so the visitor can
+					   review/edit before posting it as a brand-new thread.
+					   Gated on the same "may I create a thread" HATEOAS check
+					   the New Discussion button uses (canCreateThread) rather
+					   than on ownership of this topic — anyone who can start a
+					   new discussion may duplicate one. */
+							const dropdownDuplicateBtn =
+								messageDetail.querySelector(
+									'#forumsDetailDuplicateBtn'
+								);
+							if (dropdownDuplicateBtn && canCreateThread) {
+								dropdownDuplicateBtn.style.display = '';
+
+								const newDropdownDuplicateBtn =
+									dropdownDuplicateBtn.cloneNode(true);
+								dropdownDuplicateBtn.parentNode.replaceChild(
+									newDropdownDuplicateBtn,
+									dropdownDuplicateBtn
+								);
+								newDropdownDuplicateBtn.addEventListener(
+									'click',
+									(event) => {
+										event.preventDefault();
+										if (window.forumsOpenComposeModal) {
+											window.forumsOpenComposeModal({
+												body: opMsgBody,
+												categoryId: messageCategoryFK,
+												duplicate: true,
+												isQuestion: isMessageQuestion,
+												priority: messagePriority,
+												subject: messageTitleText,
+												tags: messageTagsArray,
+											});
+										}
+									}
+								);
+							}
+							else if (dropdownDuplicateBtn) {
+								dropdownDuplicateBtn.style.display = 'none';
+							}
+
 							const dropdownDeleteBtn =
 								messageDetail.querySelector(
 									'#forumsDetailDeleteBtn'
@@ -2982,7 +3032,7 @@ if (messageDetail) {
 		}
 
 		if (Liferay.ThemeDisplay.isSignedIn()) {
-			Liferay.Util.fetch(
+			const banStatusPromise = Liferay.Util.fetch(
 				portalURL +
 					'/o/c/forumbans/scopes/' +
 					scopeGroupId +
@@ -2997,11 +3047,38 @@ if (messageDetail) {
 				.then((r) => {
 					return r.json();
 				})
-				.then((data) => {
-					if (data.items && !!data.items.length) {
+				.catch((error) => {
+					console.error('Error checking ban status', error);
+
+					return {};
+				});
+
+			/* Same HATEOAS check the New Discussion button uses — resolved up
+			   front, in parallel, so it is ready by the time the OP renders
+			   and decides whether to show "Duplicate Topic". */
+			const canCreateThreadPromise = Liferay.Util.fetch(
+				portalURL +
+					'/o/c/forumthreads/scopes/' +
+					scopeGroupId +
+					'?page=1&pageSize=1',
+				{
+					headers,
+					method: 'GET',
+				}
+			)
+				.then((r) => {
+					return r.json();
+				})
+				.catch(() => {
+					return {};
+				});
+
+			Promise.all([banStatusPromise, canCreateThreadPromise]).then(
+				([banData, threadData]) => {
+					if (banData.items && !!banData.items.length) {
 						isBanned = true;
 					}
-					const {actions} = data;
+					const {actions} = banData;
 					isModerator =
 						!isBanned &&
 						!!(
@@ -3010,12 +3087,19 @@ if (messageDetail) {
 								actions['post'] ||
 								actions['POST'])
 						);
+
+					const threadActions = threadData && threadData.actions;
+					canCreateThread =
+						!isBanned &&
+						!!(
+							threadActions &&
+							(threadActions['post'] ||
+								threadActions['create'])
+						);
+
 					initMessageDetail();
-				})
-				.catch((error) => {
-					console.error('Error checking ban status', error);
-					initMessageDetail();
-				});
+				}
+			);
 		}
 		else {
 			initMessageDetail();
