@@ -1,0 +1,167 @@
+[
+	{
+	"schemaVersion" : "1.2",
+	"title_i18n" : {
+		"en_US" : "suggestions for home forums"
+	},
+	"configuration" : {
+		"highlightConfiguration" : { },
+		"parameterConfiguration" : { },
+		"aggregationConfiguration" : { },
+		"generalConfiguration" : {
+			"collectionProviderType" : "com.liferay.asset.kernel.model.AssetEntry",
+			"scope" : [ ],
+			"searchableAssetTypes" : [ ],
+			"clauseContributorsExcludes" : [ ],
+			"clauseContributorsIncludes" : [ "*" ],
+			"collectionProvider" : false
+		},
+		"advancedConfiguration" : { },
+		"sortConfiguration" : { },
+		"queryConfiguration" : {
+			"applyIndexerClauses" : true
+		}
+	},
+	"description_i18n" : { },
+	"elementInstances" : [ {
+		"sxpElement" : {
+			"schemaVersion" : "1.0",
+			"title_i18n" : {
+				"en-US" : "limit-search-to-the-current-site"
+			},
+			"description" : "Limit the search to the current site.",
+			"readOnly" : true,
+			"title" : "Limit Search to the Current Site",
+			"type" : 0,
+			"userName" : "",
+			"version" : "1.0",
+			"externalReferenceCode" : "LIMIT_SEARCH_TO_THE_CURRENT_SITE",
+			"description_i18n" : {
+				"en-US" : "limit-search-to-the-current-site-description"
+			},
+			"modifiedDate" : "2026-09-04T09:59:29Z",
+			"id" : 201,
+			"createDate" : "2026-09-04T09:59:29Z",
+			"elementDefinition" : {
+				"uiConfiguration" : { },
+				"configuration" : {
+					"queryConfiguration" : {
+						"queryEntries" : [ {
+							"clauses" : [ {
+								"occur" : "filter",
+								"query" : {
+									"term" : {
+										"scopeGroupId" : "${context.scope_group_id}"
+									}
+								},
+								"context" : "query"
+							} ]
+						} ]
+					}
+				},
+				"icon" : "filter",
+				"category" : "filter"
+			}
+		},
+		"configurationEntry" : {
+			"queryConfiguration" : {
+				"queryEntries" : [ {
+					"clauses" : [ {
+						"occur" : "filter",
+						"query" : {
+							"term" : {
+								"scopeGroupId" : "${context.scope_group_id}"
+							}
+						},
+						"context" : "query"
+					} ]
+				} ]
+			}
+		},
+		"uiConfigurationValues" : { }
+	}, {
+		"sxpElement" : {
+			"schemaVersion" : "1.0",
+			"title_i18n" : {
+				"en-US" : "filter-by-exact-terms-match"
+			},
+			"description" : "Filter results by one or multiple terms. At least one must match.",
+			"readOnly" : true,
+			"title" : "Filter by Exact Terms Match",
+			"type" : 0,
+			"userName" : "",
+			"version" : "1.0",
+			"externalReferenceCode" : "FILTER_BY_EXACT_TERMS_MATCH",
+			"description_i18n" : {
+				"en-US" : "filter-by-exact-terms-match-description"
+			},
+			"modifiedDate" : "2026-09-04T09:59:29Z",
+			"id" : 107,
+			"createDate" : "2026-09-04T09:59:29Z",
+			"elementDefinition" : {
+				"uiConfiguration" : {
+					"fieldSets" : [ {
+						"fields" : [ {
+							"labelLocalized" : "Field",
+							"name" : "field",
+							"label" : "field",
+							"type" : "fieldMapping"
+						}, {
+							"labelLocalized" : "Values",
+							"name" : "values",
+							"label" : "Values",
+							"type" : "multiselect"
+						} ]
+					} ]
+				},
+				"configuration" : {
+					"queryConfiguration" : {
+						"queryEntries" : [ {
+							"clauses" : [ {
+								"occur" : "filter",
+								"query" : {
+									"terms" : {
+										"${configuration.field}" : "${configuration.values}"
+									}
+								},
+								"context" : "query"
+							} ],
+							"enabled" : true
+						} ]
+					}
+				},
+				"icon" : "filter",
+				"category" : "filter"
+			}
+		},
+		"configurationEntry" : {
+			"queryConfiguration" : {
+				"queryEntries" : [ {
+					"clauses" : [ {
+						"occur" : "filter",
+						"query" : {
+							"terms" : {
+								"objectDefinitionName" : [ "ForumThread" ]
+							}
+						},
+						"context" : "query"
+					} ],
+					"enabled" : true
+				} ]
+			}
+		},
+		"uiConfigurationValues" : {
+			"field" : {
+				"languageIdPosition" : -1,
+				"field" : "objectDefinitionName",
+				"locale" : ""
+			},
+			"values" : [ {
+				"label" : "ForumThread",
+				"value" : "ForumThread"
+			} ]
+		}
+	} ],
+	"externalReferenceCode" : "forum-suggestions"
+}
+]

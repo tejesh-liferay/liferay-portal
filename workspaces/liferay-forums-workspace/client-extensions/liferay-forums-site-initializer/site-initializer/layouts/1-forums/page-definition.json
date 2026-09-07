@@ -1,56 +1,88 @@
 {
-	"pageElement": {
-		"pageElements": [
-			{
-				"definition": {
-					"indexed": true,
-					"layout": {
-					}
-				},
-				"pageElements": [
-					{
-						"definition": {
-							"fragment": {
-								"key": "forums-hero"
-							},
-							"fragmentConfig": {
-							},
-							"fragmentFields": [
-							],
-							"indexed": true
-						},
-						"pageElements": [
-						],
-						"type": "Fragment"
-					}
-				],
-				"type": "Section"
-			},
-			{
-				"definition": {
-					"indexed": true,
-					"layout": {
-					}
-				},
-				"pageElements": [
-					{
-						"definition": {
-							"fragment": {
-								"key": "forums-category-grid"
-							},
-							"fragmentConfig": {
-							},
-							"fragmentFields": [
-							],
-							"indexed": true
-						},
-						"type": "Fragment"
-					}
-				],
-				"type": "Section"
-			}
-		],
-		"type": "Root"
-	},
-	"version": 1.1
+  "pageElement": {
+    "pageElements": [
+      {
+        "definition": {
+          "indexed": true,
+          "layout": {}
+        },
+        "pageElements": [
+          {
+            "definition": {
+              "fragment": {
+                "key": "forums-hero"
+              },
+              "fragmentConfig": {
+              },
+              "fragmentFields": [
+
+              ],
+              "indexed": true
+            },
+            "pageElements": [
+              {
+                "definition": {},
+                "pageElements": [
+                  {
+                    "definition": {
+                      "widgetInstance": {
+                        "widgetConfig": {
+                          "destination": "/forums-messages",
+                          "displayStyle": "default",
+                          "displayStyleGroupId": "32484264",
+                          "federatedSearchKey": "",
+                          "inputPlaceholder": "search-...",
+                          "invisible": "false",
+                          "keywordsParameterName": "q",
+                          "scopeParameterName": "scope",
+                          "searchScope": "this-site",
+                          "showStagedResults": "false",
+                          "suggestionsContributorConfigurations": "{\"attributes\":{\"characterThreshold\":\"3\",\"fields\":[],\"includeAssetSearchSummary\":true,\"includeAssetURL\":true,\"sxpBlueprintExternalReferenceCode\":\"forum-suggestions\"},\"contributorName\":\"sxpBlueprint\",\"displayGroupName\":\"Suggested Topics\",\"size\":\"5\"}",
+                          "suggestionsDisplayThreshold": "3",
+                          "suggestionsEnabled": "true",
+                          "useAdvancedSearchSyntax": "false"
+                        },
+                        "widgetName": "com_liferay_portal_search_web_search_bar_portlet_SearchBarPortlet"
+                      }
+                    },
+                    "type": "Widget"
+                  }
+                ],
+                "type": "FragmentDropZone"
+              }
+            ],
+            "type": "Fragment"
+          }
+        ],
+        "type": "Section"
+      },
+      {
+        "definition": {
+          "indexed": true,
+          "layout": {}
+        },
+        "pageElements": [
+          {
+            "definition": {
+              "fragment": {
+                "key": "forums-category-grid"
+              },
+              "fragmentConfig": {
+              },
+              "fragmentFields": [],
+              "indexed": true
+            },
+            "type": "Fragment"
+          }
+        ],
+        "type": "Section"
+      }
+    ],
+    "type": "Root"
+  },
+  "settings": {
+    "colorSchemeName": "01",
+    "themeName": "Classic"
+  },
+  "version": 1.1
 }
