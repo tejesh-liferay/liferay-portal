@@ -2079,6 +2079,23 @@ if (messageDetail) {
 								return r.json();
 							})
 							.then((data) => {
+
+								/* HATEOAS: only show "Flag Message" when the
+								   forumsuspiciousactivities API confirms this
+								   user is allowed to create one. */
+								const canCreateFlag =
+									!isBanned &&
+									!!(
+										data.actions &&
+										(data.actions['create'] ||
+											data.actions['post'] ||
+											data.actions['POST'])
+									);
+
+								flagBtn.style.display = canCreateFlag
+									? ''
+									: 'none';
+
 								const items = data.items || [];
 								const [firstFlag] = items;
 								if (firstFlag) {
@@ -2170,7 +2187,9 @@ if (messageDetail) {
 					   A locked topic blocks replies for everyone, moderators
 					   included, until it is unlocked — same restriction the
 					   server enforces via the ForumMessage lock validation
-					   rule. Flagging is unaffected by the lock. */
+					   rule. Flagging visibility is driven separately by the
+					   forumsuspiciousactivities HATEOAS check and is
+					   unaffected by the lock. */
 					const canCreateMessage = !!(
 						!isBanned &&
 						data.actions &&
@@ -2181,11 +2200,6 @@ if (messageDetail) {
 					canReply = canCreateMessage && !isThreadLocked;
 					if (replyBtn) {
 						replyBtn.style.display = canReply ? '' : 'none';
-					}
-					if (flagBtn) {
-						flagBtn.style.display = canCreateMessage
-							? ''
-							: 'none';
 					}
 
 					/* Fetch user votes FIRST, then render everything */
