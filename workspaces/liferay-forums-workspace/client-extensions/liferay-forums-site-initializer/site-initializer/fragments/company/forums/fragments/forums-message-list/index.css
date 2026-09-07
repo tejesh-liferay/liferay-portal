@@ -86,6 +86,14 @@
 	width: 96px;
 }
 
+/* Pins the options kebab to the top right corner of the card, in line with
+   the avatar rather than sinking to the vertical center of the whole row. */
+.forums-message-card__options-col {
+	align-self: flex-start;
+	flex-shrink: 0;
+	margin-left: 0.5rem;
+}
+
 .forums-message-card__username {
 	font-size: 0.8125rem;
 	font-weight: 600;

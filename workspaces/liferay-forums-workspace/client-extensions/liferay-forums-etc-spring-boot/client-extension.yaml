@@ -60,3 +60,10 @@ liferay-forums-etc-spring-boot-object-validation-rule-priority:
     oAuth2ApplicationExternalReferenceCode: liferay-forums-etc-spring-boot-oaua
     resourcePath: /object-validation-rule/priority
     type: objectValidationRule
+liferay-forums-etc-spring-boot-object-validation-rule-locked:
+    allowedObjectDefinitionNames:
+        -   C_ForumMessage
+    name: Liferay Forums Etc Spring Boot Object Validation Rule Locked
+    oAuth2ApplicationExternalReferenceCode: liferay-forums-etc-spring-boot-oaua
+    resourcePath: /object-validation-rule/locked
+    type: objectValidationRule

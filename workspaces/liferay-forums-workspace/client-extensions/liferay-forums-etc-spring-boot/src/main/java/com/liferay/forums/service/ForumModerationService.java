@@ -136,6 +136,32 @@ public class ForumModerationService {
 		}
 	}
 
+	public boolean isThreadLocked(long threadId, String authToken) {
+		if (threadId <= 0) {
+			return false;
+		}
+
+		try {
+			JSONObject threadJSONObject = new JSONObject(
+				_liferayApiClient.get(
+					StringBundler.concat(
+						"/o/c/forumthreads/", threadId, "?fields=locked"),
+					authToken));
+
+			return threadJSONObject.optBoolean("locked", false);
+		}
+		catch (Exception exception) {
+			if (_log.isDebugEnabled()) {
+				_log.debug(
+					StringBundler.concat(
+						"Unable to read the lock state of thread ", threadId,
+						": ", exception.getMessage()));
+			}
+
+			return false;
+		}
+	}
+
 	public long resolveSiteId(String authToken) {
 		try {
 			return new JSONObject(

@@ -214,6 +214,19 @@
 			},
 			"outputType": "fullValidation",
 			"script": ""
+		},
+		{
+			"active": true,
+			"engine": "function#liferay-forums-etc-spring-boot-object-validation-rule-locked",
+			"errorLabel": {
+				"en_US": "This topic is locked. New replies and edits are not allowed."
+			},
+			"externalReferenceCode": "FORUM-MESSAGE-LOCKED-VALIDATION",
+			"name": {
+				"en_US": "Thread Lock Enforcement"
+			},
+			"outputType": "fullValidation",
+			"script": ""
 		}
 	],
 	"panelCategoryKey": "",

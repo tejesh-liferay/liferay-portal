@@ -59,6 +59,13 @@
 	data-label-success="${languageUtil.get(locale, "success")}"
 	data-label-subscribed-toast="${languageUtil.get(locale, "you-have-been-subscribed-to-this-message")}"
 	data-label-unsubscribed-toast="${languageUtil.get(locale, "you-have-been-unsubscribed-from-this-message")}"
+	data-label-locked="${languageUtil.get(locale, "locked", "Locked")}"
+	data-label-locked-warning="${languageUtil.get(locale, "this-topic-is-locked-new-replies-and-edits-are-not-allowed", "This topic is locked. New replies and edits are not allowed.")}"
+	data-label-lock-topic="${languageUtil.get(locale, "lock-topic", "Lock Topic")}"
+	data-label-unlock-topic="${languageUtil.get(locale, "unlock-topic", "Unlock Topic")}"
+	data-label-confirm-lock-topic="${languageUtil.get(locale, "confirm-lock-topic", "Locking a topic prevents anyone from replying to it or editing its messages until it is unlocked.")}"
+	data-label-topic-locked-toast="${languageUtil.get(locale, "this-topic-has-been-locked", "This topic has been locked.")}"
+	data-label-topic-unlocked-toast="${languageUtil.get(locale, "this-topic-has-been-unlocked", "This topic has been unlocked.")}"
 >
 	<div class="panel-body">
 
@@ -94,6 +101,7 @@
 					<a class="dropdown-item" href="#" id="forumsDetailToggleQuestionBtn" style="display:none;"></a>
 					<a class="dropdown-item" href="#" id="forumsDetailFlagBtn">${languageUtil.get(locale, "flag-message")}</a>
 					<a class="dropdown-item" href="#" id="forumsDetailSubscribeBtn" style="display:none;"></a>
+					<a class="dropdown-item" href="#" id="forumsDetailLockBtn" style="display:none;"></a>
 					<a class="dropdown-item text-danger forums-delete-btn" href="#" id="forumsDetailDeleteBtn" style="display:none;">${languageUtil.get(locale, "delete-topic")}</a>
 				</div>
 			</div>

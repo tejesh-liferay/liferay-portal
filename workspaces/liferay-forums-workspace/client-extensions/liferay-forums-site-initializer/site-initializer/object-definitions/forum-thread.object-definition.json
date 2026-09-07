@@ -105,6 +105,15 @@
 			},
 			"name": "viewCount",
 			"required": false
+		},
+		{
+			"DBType": "Boolean",
+			"businessType": "Boolean",
+			"label": {
+				"en_US": "Locked"
+			},
+			"name": "locked",
+			"required": false
 		}
 	],
 	"objectFolderExternalReferenceCode": "FORUMS-FOLDER",
