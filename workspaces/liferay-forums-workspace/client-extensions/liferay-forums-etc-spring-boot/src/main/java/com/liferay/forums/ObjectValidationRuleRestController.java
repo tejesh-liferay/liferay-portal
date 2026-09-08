@@ -55,7 +55,7 @@ public class ObjectValidationRuleRestController extends BaseRestController {
 
 	@PostMapping("/checkUserAlreadyBanned")
 	public ResponseEntity<String> checkUserAlreadyBanned(
-			@AuthenticationPrincipal Jwt jwt, @RequestBody String json) {
+		@AuthenticationPrincipal Jwt jwt, @RequestBody String json) {
 
 		if (jwt != null) {
 			log(jwt, _log, json);
@@ -66,13 +66,36 @@ public class ObjectValidationRuleRestController extends BaseRestController {
 		long banUserId = payloadJSONObject.optLong("banUserId");
 
 		boolean banned = _forumModerationService.isBanned(
-				banUserId, _serviceAuthToken());
+			banUserId, _serviceAuthToken());
 
 		if (banned && _log.isInfoEnabled()) {
 			_log.info("User already banned " + banUserId);
 		}
 
 		return _respond(payloadJSONObject, !banned);
+	}
+
+	@PostMapping("/locked")
+	public ResponseEntity<String> locked(
+		@AuthenticationPrincipal Jwt jwt, @RequestBody String json) {
+
+		if (jwt != null) {
+			log(jwt, _log, json);
+		}
+
+		JSONObject payloadJSONObject = new JSONObject(json);
+
+		long threadId = payloadJSONObject.optLong(
+			"r_threadMessages_c_forumThreadId");
+
+		boolean locked = _forumModerationService.isThreadLocked(
+			threadId, _serviceAuthToken());
+
+		if (locked && _log.isInfoEnabled()) {
+			_log.info("Refused a message on locked thread " + threadId);
+		}
+
+		return _respond(payloadJSONObject, !locked);
 	}
 
 	@PostMapping("/priority")
@@ -110,30 +133,6 @@ public class ObjectValidationRuleRestController extends BaseRestController {
 		}
 
 		return _respond(payloadJSONObject, allowed);
-	}
-
-	@PostMapping("/locked")
-	public ResponseEntity<String> locked(
-		@AuthenticationPrincipal Jwt jwt, @RequestBody String json) {
-
-		if (jwt != null) {
-			log(jwt, _log, json);
-		}
-
-		JSONObject payloadJSONObject = new JSONObject(json);
-
-		long threadId = payloadJSONObject.optLong(
-			"r_threadMessages_c_forumThreadId");
-
-		boolean locked = _forumModerationService.isThreadLocked(
-			threadId, _serviceAuthToken());
-
-		if (locked && _log.isInfoEnabled()) {
-			_log.info(
-				"Refused a message on locked thread " + threadId);
-		}
-
-		return _respond(payloadJSONObject, !locked);
 	}
 
 	private long _resolveCreatorUserId(JSONObject payloadJSONObject) {

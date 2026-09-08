@@ -1,0 +1,27 @@
+{
+	"object-actions": [
+		{
+			"active": true,
+			"externalReferenceCode": "FORUM-SUSPICIOUS-ACTIVITY-HANDLE-UPDATE-ACTION",
+			"label": "{\"en_US\": \"Handle Suspicious Activity Update\"}",
+			"name": "ForumSuspiciousActivityHandleUpdate",
+			"objectActionExecutorKey": "function#liferay-forums-etc-spring-boot-object-action-handle-suspicious-activity-update",
+			"objectActionTriggerKey": "onAfterUpdate",
+			"parameters": {
+			},
+			"system": false
+		},
+		{
+			"active": true,
+			"externalReferenceCode": "FORUM-SUSPICIOUS-ACTIVITY-RECREATE-DELETED-ACTION",
+			"label": "{\"en_US\": \"Recreate Deleted Suspicious Activity\"}",
+			"name": "ForumSuspiciousActivityRecreateDeleted",
+			"objectActionExecutorKey": "function#liferay-forums-etc-spring-boot-object-action-recreate-deleted-suspicious-activity",
+			"objectActionTriggerKey": "onAfterDelete",
+			"parameters": {
+			},
+			"system": false
+		}
+	],
+	"objectDefinitionId": "[$OBJECT_DEFINITION_ID:ForumSuspiciousActivity$]"
+}

@@ -51,6 +51,177 @@ public class ForumModerationService {
 		return false;
 	}
 
+	public boolean canManageForumSuspiciousActivity(
+		long entryId, String actorAuthToken, String authToken) {
+
+		if (entryId <= 0) {
+			return false;
+		}
+
+		long siteId = resolveSiteId(authToken);
+
+		if (siteId <= 0) {
+			return false;
+		}
+
+		try {
+
+			// updateBatch/deleteBatch on the collection response reflect the
+			// caller's resource level (company/group scope) permission, not
+			// per entry owner permission, so this is authenticated as the
+			// real acting user (actorAuthToken), never the service account.
+
+			JSONObject pageJSONObject = new JSONObject(
+				_liferayApiClient.get(
+					StringBundler.concat(
+						"/o/c/forumsuspiciousactivities/scopes/", siteId,
+						"?pageSize=1&filter=",
+						_encode("id eq '" + entryId + "'")),
+					actorAuthToken));
+
+			JSONObject actionsJSONObject = pageJSONObject.optJSONObject(
+				"actions");
+
+			boolean canManage = false;
+
+			if ((actionsJSONObject != null) &&
+				(actionsJSONObject.has("updateBatch") ||
+				 actionsJSONObject.has("deleteBatch"))) {
+
+				canManage = true;
+			}
+
+			// TEMPORARY: remove once permission resolution is verified live
+
+			if (_log.isInfoEnabled()) {
+				_log.info(
+					StringBundler.concat(
+						"[DIAG] canManageForumSuspiciousActivity entryId=",
+						entryId, " actions=", actionsJSONObject, " canManage=",
+						canManage));
+			}
+
+			return canManage;
+		}
+		catch (Exception exception) {
+			_log.error(
+				StringBundler.concat(
+					"Unable to check the manage permission for suspicious ",
+					"activity ", entryId, ": ", exception.getMessage()));
+
+			return false;
+		}
+	}
+
+	public void cascadeValidateSuspiciousActivities(
+		String threadERC, long validatedObjectEntryId, String authToken) {
+
+		if ((threadERC == null) || threadERC.isEmpty()) {
+			return;
+		}
+
+		long siteId = resolveSiteId(authToken);
+
+		if (siteId <= 0) {
+			_log.error(
+				StringBundler.concat(
+					"Unable to cascade the validation of suspicious ",
+					"activities for thread ", threadERC,
+					" without a site scope"));
+
+			return;
+		}
+
+		try {
+
+			// Relationship fields must be filtered by the related entry's ERC,
+			// not its numeric ID, or the OData parser throws "Incompatible
+			// types."
+
+			String filter = StringBundler.concat(
+				"r_threadSuspiciousActivities_c_forumThreadERC eq '", threadERC,
+				"' and validated eq false");
+
+			JSONArray itemsJSONArray = new JSONObject(
+				_liferayApiClient.get(
+					StringBundler.concat(
+						"/o/c/forumsuspiciousactivities/scopes/", siteId,
+						"?fields=id&pageSize=-1&filter=", _encode(filter)),
+					authToken)
+			).optJSONArray(
+				"items"
+			);
+
+			if (itemsJSONArray == null) {
+				return;
+			}
+
+			JSONObject validatedJSONObject = new JSONObject(
+			).put(
+				"validated", true
+			);
+
+			for (int i = 0; i < itemsJSONArray.length(); i++) {
+				JSONObject itemJSONObject = itemsJSONArray.optJSONObject(i);
+
+				if (itemJSONObject == null) {
+					continue;
+				}
+
+				long entryId = itemJSONObject.optLong("id", 0L);
+
+				if ((entryId <= 0) || (entryId == validatedObjectEntryId)) {
+					continue;
+				}
+
+				_liferayApiClient.patch(
+					"/o/c/forumsuspiciousactivities/" + entryId, authToken,
+					validatedJSONObject.toString());
+			}
+		}
+		catch (Exception exception) {
+			_log.error(
+				StringBundler.concat(
+					"Unable to cascade the validation of suspicious ",
+					"activities for thread ", threadERC, ": ",
+					exception.getMessage()));
+		}
+	}
+
+	public boolean forumThreadExists(String threadERC, String authToken) {
+		if ((threadERC == null) || threadERC.isEmpty()) {
+			return false;
+		}
+
+		long siteId = resolveSiteId(authToken);
+
+		if (siteId <= 0) {
+			return false;
+		}
+
+		try {
+			JSONObject threadJSONObject = new JSONObject(
+				_liferayApiClient.get(
+					StringBundler.concat(
+						"/o/c/forumthreads/scopes/", siteId,
+						"/by-external-reference-code/", _encode(threadERC),
+						"?fields=id"),
+					authToken));
+
+			return threadJSONObject.optLong("id", 0L) > 0;
+		}
+		catch (Exception exception) {
+			if (_log.isDebugEnabled()) {
+				_log.debug(
+					StringBundler.concat(
+						"Unable to confirm thread ", threadERC,
+						" exists: ", exception.getMessage()));
+			}
+
+			return false;
+		}
+	}
+
 	public boolean isBanned(long userId, String authToken) {
 		if (userId <= 0) {
 			return false;
@@ -91,6 +262,32 @@ public class ForumModerationService {
 					exception.getMessage()));
 
 			return true;
+		}
+	}
+
+	public boolean isThreadLocked(long threadId, String authToken) {
+		if (threadId <= 0) {
+			return false;
+		}
+
+		try {
+			JSONObject threadJSONObject = new JSONObject(
+				_liferayApiClient.get(
+					StringBundler.concat(
+						"/o/c/forumthreads/", threadId, "?fields=locked"),
+					authToken));
+
+			return threadJSONObject.optBoolean("locked", false);
+		}
+		catch (Exception exception) {
+			if (_log.isDebugEnabled()) {
+				_log.debug(
+					StringBundler.concat(
+						"Unable to read the lock state of thread ", threadId,
+						": ", exception.getMessage()));
+			}
+
+			return false;
 		}
 	}
 
@@ -136,29 +333,34 @@ public class ForumModerationService {
 		}
 	}
 
-	public boolean isThreadLocked(long threadId, String authToken) {
-		if (threadId <= 0) {
-			return false;
+	public void recreateForumSuspiciousActivity(
+		String valuesJSON, String authToken) {
+
+		long siteId = resolveSiteId(authToken);
+
+		if (siteId <= 0) {
+			_log.error(
+				"Unable to recreate a deleted suspicious activity without a " +
+					"site scope");
+
+			return;
 		}
 
 		try {
-			JSONObject threadJSONObject = new JSONObject(
-				_liferayApiClient.get(
-					StringBundler.concat(
-						"/o/c/forumthreads/", threadId, "?fields=locked"),
-					authToken));
+			_liferayApiClient.post(
+				"/o/c/forumsuspiciousactivities/scopes/" + siteId, authToken,
+				valuesJSON);
 
-			return threadJSONObject.optBoolean("locked", false);
+			if (_log.isInfoEnabled()) {
+				_log.info(
+					"Recreated an unauthorized self deleted suspicious " +
+						"activity");
+			}
 		}
 		catch (Exception exception) {
-			if (_log.isDebugEnabled()) {
-				_log.debug(
-					StringBundler.concat(
-						"Unable to read the lock state of thread ", threadId,
-						": ", exception.getMessage()));
-			}
-
-			return false;
+			_log.error(
+				"Unable to recreate a deleted suspicious activity: " +
+					exception.getMessage());
 		}
 	}
 
@@ -181,6 +383,33 @@ public class ForumModerationService {
 					": ", exception.getMessage()));
 
 			return 0L;
+		}
+	}
+
+	public void revertForumSuspiciousActivity(
+		long entryId, String originalValuesJSON, String authToken) {
+
+		if (entryId <= 0) {
+			return;
+		}
+
+		try {
+			_liferayApiClient.patch(
+				"/o/c/forumsuspiciousactivities/" + entryId, authToken,
+				originalValuesJSON);
+
+			if (_log.isInfoEnabled()) {
+				_log.info(
+					StringBundler.concat(
+						"Reverted an unauthorized self edit on suspicious ",
+						"activity ", entryId));
+			}
+		}
+		catch (Exception exception) {
+			_log.error(
+				StringBundler.concat(
+					"Unable to revert suspicious activity ", entryId, ": ",
+					exception.getMessage()));
 		}
 	}
 
