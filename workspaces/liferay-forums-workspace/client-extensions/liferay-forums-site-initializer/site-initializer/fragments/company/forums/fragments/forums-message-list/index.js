@@ -67,6 +67,7 @@ if (messageList) {
 	const pageSize = 20;
 	let categoryId = null;
 	let searchQuery = '';
+	let tagFilter = null;
 	const currentUserId = Liferay.ThemeDisplay.getUserId();
 	let isBanned = false;
 
@@ -211,6 +212,7 @@ if (messageList) {
 	const urlParams = new URLSearchParams(window.location.search);
 	categoryId = urlParams.get('categoryId');
 	searchQuery = urlParams.get('q') || '';
+	tagFilter = urlParams.get('tag') || null;
 	if (searchInput && searchQuery) {
 		searchInput.value = searchQuery;
 	}
@@ -424,6 +426,19 @@ if (messageList) {
 	/* Link to another category on this same page */
 	const categoryHref = function (id) {
 		return window.location.pathname + '?categoryId=' + id;
+	};
+
+	/* Link that reapplies the current category (if selected) together with
+	   this tag, so a tag click composes with — rather than replaces — an
+	   active category filter. */
+	const tagHref = function (tag) {
+		const params = new URLSearchParams(window.location.search);
+		if (categoryId) {
+			params.set('categoryId', categoryId);
+		}
+		params.set('tag', tag);
+
+		return window.location.pathname + '?' + params.toString();
 	};
 
 	/* Build {byId, childrenOf} from a flat list. Anything deeper than
@@ -754,6 +769,43 @@ if (messageList) {
 		});
 	}
 
+	/* Tag click handler (delegated: tags are re-rendered on every load). A
+	   click on the active tag clears it; a click on any other tag replaces
+	   it. The current category filter, if any, is preserved. */
+	messageList.addEventListener('click', (event) => {
+		const tagEl = event.target.closest(
+			'.forums-message-card__tag--clickable'
+		);
+		if (!tagEl) {
+			return;
+		}
+		event.preventDefault();
+
+		const tag = tagEl.dataset.tag;
+		if (!tag) {
+			return;
+		}
+
+		tagFilter = tagFilter === tag ? null : tag;
+		currentPage = 1;
+
+		const params = new URLSearchParams(window.location.search);
+		if (tagFilter) {
+			params.set('tag', tagFilter);
+		}
+		else {
+			params.delete('tag');
+		}
+		history.pushState(
+			null,
+			'',
+			window.location.pathname +
+				(params.toString() ? '?' + params.toString() : '')
+		);
+
+		loadMessages();
+	});
+
 	/* Load messages */
 	const loadMessages = function () {
 		cardsContainer
@@ -788,6 +840,11 @@ if (messageList) {
 		if (categoryId) {
 			filterParts.push(
 				"r_categoryThreads_c_forumCategoryId eq '" + categoryId + "'"
+			);
+		}
+		if (tagFilter) {
+			filterParts.push(
+				"keywords in ('" + tagFilter.replace(/'/g, "''") + "')"
 			);
 		}
 
@@ -1117,10 +1174,19 @@ if (messageList) {
 								let tHtml =
 									'<div class="forums-message-card__tags">';
 								messageTags.forEach((tag) => {
+									const isActive = tagFilter === tag;
 									tHtml +=
-										'<span class="label label-lg forums-message-card__tag"><span class="label-item label-item-expand">' +
+										'<a href="' +
+										Liferay.Util.escapeHTML(tagHref(tag)) +
+										'" class="label label-lg forums-message-card__tag forums-message-card__tag--clickable' +
+										(isActive
+											? ' forums-message-card__tag--active'
+											: '') +
+										'" data-tag="' +
 										Liferay.Util.escapeHTML(tag) +
-										'</span></span>';
+										'"><span class="label-item label-item-expand">' +
+										Liferay.Util.escapeHTML(tag) +
+										'</span></a>';
 								});
 								tHtml += '</div>';
 

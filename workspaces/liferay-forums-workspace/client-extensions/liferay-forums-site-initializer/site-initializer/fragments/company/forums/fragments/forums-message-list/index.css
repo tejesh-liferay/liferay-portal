@@ -149,6 +149,29 @@
 	color: var(--dark-d2, #111116);
 }
 
+.forums-message-card__tag--clickable {
+	cursor: pointer;
+	text-decoration: none;
+}
+
+.forums-message-card__tag--clickable:hover {
+	background-color: var(--secondary-l2, #d6d6e0);
+	border-color: var(--secondary-l2, #d6d6e0);
+	color: var(--dark-d2, #111116);
+}
+
+.forums-message-card__tag--active {
+	background-color: var(--primary, #4B4EFC);
+	border-color: var(--primary, #4B4EFC);
+	color: var(--light, #fff);
+}
+
+.forums-message-card__tag--active:hover {
+	background-color: var(--primary-d1, #3f42d6);
+	border-color: var(--primary-d1, #3f42d6);
+	color: var(--light, #fff);
+}
+
 .forums-message-card__meta {
 	align-items: center;
 	display: flex;
