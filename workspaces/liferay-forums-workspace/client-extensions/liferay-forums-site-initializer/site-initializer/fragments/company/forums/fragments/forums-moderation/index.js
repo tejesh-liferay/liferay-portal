@@ -972,6 +972,103 @@ if (forumsMod) {
 						actionsDiv.appendChild(dismissBtn);
 					}
 
+					/* Delete Thread button (validated flags only). Gated on
+					   the ForumThread's own HATEOAS delete action rather
+					   than the flag's — moderation permission over flags
+					   doesn't imply delete permission over threads. */
+					if (isValidated && r_threadSuspiciousActivities_c_forumThreadId) {
+						const threadId =
+							r_threadSuspiciousActivities_c_forumThreadId;
+
+						Liferay.Util.fetch(
+							portalURL + '/o/c/forumthreads/' + threadId,
+							{headers, method: 'GET'}
+						)
+							.then((r) => {
+								return r.json();
+							})
+							.then((threadData) => {
+								const threadActions =
+									threadData && threadData.actions;
+
+								if (!(threadActions && threadActions['delete'])) {
+									return;
+								}
+
+								const deleteThreadHref =
+									threadActions['delete'].href ||
+									portalURL +
+										'/o/c/forumthreads/' +
+										threadId;
+
+								const deleteThreadBtn =
+									document.createElement('button');
+								deleteThreadBtn.className =
+									'btn btn-sm btn-outline-danger';
+								deleteThreadBtn.textContent =
+									forumsMod.dataset.labelDeleteThread ||
+									'Delete Thread';
+								deleteThreadBtn.addEventListener(
+									'click',
+									() => {
+										const message =
+											forumsMod.dataset
+												.labelConfirmDeleteThread ||
+											'Deleting a topic is an action impossible to revert. All the replies in the topic will be removed and it will not be possible to recover them.';
+										showConfirmModal(
+											message,
+											forumsMod.dataset
+												.labelDeleteThread ||
+												'Delete Thread',
+											() => {
+												deleteThreadBtn.disabled =
+													true;
+												Liferay.Util.fetch(
+													deleteThreadHref,
+													{
+														headers,
+														method: 'DELETE',
+													}
+												)
+													.then((r) => {
+														if (r.ok) {
+															item.style.opacity =
+																'0.5';
+															setTimeout(() => {
+																item.remove();
+
+																if (
+																	!flagList.querySelectorAll(
+																		'.forums-moderation__flag-item'
+																	).length
+																) {
+																	loadFlags();
+																}
+															}, 300);
+														}
+														else {
+															deleteThreadBtn.disabled = false;
+															console.error(
+																'Delete thread failed'
+															);
+														}
+													})
+													.catch((error) => {
+														deleteThreadBtn.disabled = false;
+														console.error(
+															'Delete thread error:',
+															error
+														);
+													});
+											}
+										);
+									}
+								);
+								actionsDiv.appendChild(deleteThreadBtn);
+							})
+							.catch(() => {});
+					}
+
 					item.appendChild(infoDiv);
 					item.appendChild(actionsDiv);
 					flagList.appendChild(item);
