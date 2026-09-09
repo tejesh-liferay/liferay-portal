@@ -3,5 +3,6 @@
 		"className": "[$OBJECT_DEFINITION_CLASS_NAME:ForumThread$]"
 	},
 	"defaultTemplate": true,
+	"locked": true,
 	"name": "Forum Thread"
 }
