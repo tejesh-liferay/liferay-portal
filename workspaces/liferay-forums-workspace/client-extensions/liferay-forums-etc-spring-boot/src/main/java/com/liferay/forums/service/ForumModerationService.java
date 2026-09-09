@@ -208,14 +208,18 @@ public class ForumModerationService {
 						"?fields=id"),
 					authToken));
 
-			return threadJSONObject.optLong("id", 0L) > 0;
+			if (threadJSONObject.optLong("id", 0L) > 0) {
+				return true;
+			}
+
+			return false;
 		}
 		catch (Exception exception) {
 			if (_log.isDebugEnabled()) {
 				_log.debug(
 					StringBundler.concat(
-						"Unable to confirm thread ", threadERC,
-						" exists: ", exception.getMessage()));
+						"Unable to confirm thread ", threadERC, " exists: ",
+						exception.getMessage()));
 			}
 
 			return false;

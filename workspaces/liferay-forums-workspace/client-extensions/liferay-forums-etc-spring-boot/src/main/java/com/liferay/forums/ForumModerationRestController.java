@@ -8,6 +8,7 @@ package com.liferay.forums;
 import com.liferay.client.extension.util.spring.boot3.BaseRestController;
 import com.liferay.client.extension.util.spring.boot3.client.LiferayOAuth2AccessTokenManager;
 import com.liferay.forums.service.ForumModerationService;
+import com.liferay.portal.kernel.util.GetterUtil;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -55,12 +56,13 @@ public class ForumModerationRestController extends BaseRestController {
 		String authToken = _serviceAuthToken();
 
 		String actorAuthToken = _actorAuthToken(jwt, authToken);
+		long actorUserId = _resolveActorUserId(jwt);
 
 		_forumNotificationExecutor.execute(
 			() -> _fanOut(
 				"handle-suspicious-activity-update",
 				() -> _processHandleSuspiciousActivityUpdate(
-					json, actorAuthToken, authToken)));
+					json, actorUserId, actorAuthToken, authToken)));
 
 		return new ResponseEntity<>(json, HttpStatus.OK);
 	}
@@ -122,7 +124,8 @@ public class ForumModerationRestController extends BaseRestController {
 	}
 
 	private void _processHandleSuspiciousActivityUpdate(
-		String json, String actorAuthToken, String authToken) {
+		String json, long actorUserId, String actorAuthToken,
+		String authToken) {
 
 		JSONObject payloadJSONObject = new JSONObject(json);
 
@@ -144,12 +147,14 @@ public class ForumModerationRestController extends BaseRestController {
 
 		long entryId = objectEntryJSONObject.optLong("id", 0L);
 
-		if (!_forumModerationService.canManageForumSuspiciousActivity(
-				entryId, actorAuthToken, authToken)) {
+		if (actorUserId == _resolveCreatorUserId(objectEntryJSONObject)) {
+			if (!_forumModerationService.canManageForumSuspiciousActivity(
+					entryId, actorAuthToken, authToken)) {
 
-			_revertSelfEdit(payloadJSONObject, authToken);
+				_revertSelfEdit(payloadJSONObject, authToken);
 
-			return;
+				return;
+			}
 		}
 
 		String threadERC = valuesJSONObject.optString(
@@ -220,6 +225,25 @@ public class ForumModerationRestController extends BaseRestController {
 
 		_forumModerationService.recreateForumSuspiciousActivity(
 			valuesJSONObject.toString(), authToken);
+	}
+
+	private long _resolveActorUserId(Jwt jwt) {
+		if (jwt == null) {
+			return 0L;
+		}
+
+		return GetterUtil.getLong(jwt.getClaimAsString("sub"));
+	}
+
+	private long _resolveCreatorUserId(JSONObject objectEntryJSONObject) {
+		JSONObject creatorJSONObject = objectEntryJSONObject.optJSONObject(
+			"creator");
+
+		if (creatorJSONObject != null) {
+			return creatorJSONObject.optLong("id", 0L);
+		}
+
+		return 0L;
 	}
 
 	private void _revertSelfEdit(
