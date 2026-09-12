@@ -15,6 +15,7 @@ liferay-forums-etc-spring-boot-oahs:
         -   c_forumsuspiciousactivity.everything
         -   c_forumthread.everything.read
         -   c_forumuser.everything
+        -   c_forumvote.everything.read
     type: oAuthApplicationHeadlessServer
     userAccountScreenName: default-service-account
 liferay-forums-etc-spring-boot-oaua:
@@ -34,6 +35,11 @@ liferay-forums-etc-spring-boot-object-action-new-reply:
     name: Liferay Forums Etc Spring Boot Object Action New Reply
     oAuth2ApplicationExternalReferenceCode: liferay-forums-etc-spring-boot-oaua
     resourcePath: /object-action/new-reply
+    type: objectAction
+liferay-forums-etc-spring-boot-object-action-recalculate-vote-score:
+    name: Liferay Forums Etc Spring Boot Object Action Recalculate Vote Score
+    oAuth2ApplicationExternalReferenceCode: liferay-forums-etc-spring-boot-oaua
+    resourcePath: /object-action/recalculate-vote-score
     type: objectAction
 liferay-forums-etc-spring-boot-object-action-record-author:
     name: Liferay Forums Etc Spring Boot Object Action Record Author

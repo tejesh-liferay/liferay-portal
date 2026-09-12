@@ -885,9 +885,25 @@ if (messageDetail) {
 				return;
 			}
 
-			/* Filter by current user's ID to only get this user's votes */
+			/* Filter by current user's ID AND the messages actually being
+			   rendered: filtering by creatorId alone can return only the
+			   user's oldest/most-recent pageSize votes site-wide, silently
+			   truncating this thread's vote off the page for a user who
+			   has voted many times elsewhere. Scoping to messageIds also
+			   keeps the response small. Relationship fields compare as
+			   strings, so quote each id. */
+			const messageIdFilter = messageIds
+				.map(
+					(id) =>
+						"r_messageVotes_c_forumMessageId eq '" + id + "'"
+				)
+				.join(' or ');
 			const filterParam = encodeURIComponent(
-				'creatorId eq ' + currentUserId
+				'creatorId eq ' +
+					currentUserId +
+					' and (' +
+					messageIdFilter +
+					')'
 			);
 			Liferay.Util.fetch(
 				portalURL +
@@ -895,7 +911,8 @@ if (messageDetail) {
 					scopeGroupId +
 					'?filter=' +
 					filterParam +
-					'&pageSize=200',
+					'&pageSize=' +
+					messageIds.length,
 				{
 					headers,
 					method: 'GET',
@@ -1087,20 +1104,10 @@ if (messageDetail) {
 				}
 			}
 
-			/* Also PATCH the ForumMessage to persist the denormalized score */
-			if (scoreEl) {
-				const persistedScore = parseInt(scoreEl.textContent, 10) || 0;
-				Liferay.Util.fetch(
-					portalURL + '/o/c/forummessages/' + messageId,
-					{
-						body: JSON.stringify({voteScore: persistedScore}),
-						headers,
-						method: 'PATCH',
-					}
-				).catch((error) => {
-					console.error('Score persist error:', error);
-				});
-			}
+			/* ForumMessage.voteScore is persisted server-side: an
+			   onAfterAdd/onAfterDelete object action on ForumVote
+			   recalculates it with the service account, since a non-owner
+			   has no UPDATE permission on ForumMessage. */
 		}
 
 		/* Attach vote click handlers after rendering */

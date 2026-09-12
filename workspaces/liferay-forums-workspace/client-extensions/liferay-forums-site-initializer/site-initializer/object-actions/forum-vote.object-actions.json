@@ -1,0 +1,27 @@
+{
+	"object-actions": [
+		{
+			"active": true,
+			"externalReferenceCode": "FORUM-VOTE-RECALCULATE-SCORE-ON-ADD-ACTION",
+			"label": "{\"en_US\": \"Recalculate Vote Score On Add\"}",
+			"name": "ForumVoteRecalculateScoreOnAdd",
+			"objectActionExecutorKey": "function#liferay-forums-etc-spring-boot-object-action-recalculate-vote-score",
+			"objectActionTriggerKey": "onAfterAdd",
+			"parameters": {
+			},
+			"system": false
+		},
+		{
+			"active": true,
+			"externalReferenceCode": "FORUM-VOTE-RECALCULATE-SCORE-ON-DELETE-ACTION",
+			"label": "{\"en_US\": \"Recalculate Vote Score On Delete\"}",
+			"name": "ForumVoteRecalculateScoreOnDelete",
+			"objectActionExecutorKey": "function#liferay-forums-etc-spring-boot-object-action-recalculate-vote-score",
+			"objectActionTriggerKey": "onAfterDelete",
+			"parameters": {
+			},
+			"system": false
+		}
+	],
+	"objectDefinitionId": "[$OBJECT_DEFINITION_ID:ForumVote$]"
+}
