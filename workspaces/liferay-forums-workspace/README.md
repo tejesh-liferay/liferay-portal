@@ -8,11 +8,13 @@ There are no OSGi modules. Everything ships as client extensions, so the applica
 
 - [What Is Included](#what-is-included)
 - [Setup](#setup)
+- [Deploying to Multiple Sites](#deploying-to-multiple-sites)
 - [Required Feature Flags](#required-feature-flags)
 - [Optional Portal Properties](#optional-portal-properties)
 - [Fragments](#fragments)
 - [Category Hierarchy](#category-hierarchy)
 - [Thread Priorities](#thread-priorities)
+- [Voting](#voting)
 - [User Mentions](#user-mentions)
 - [Pages](#pages)
 - [Language Keys](#language-keys)
@@ -26,9 +28,8 @@ There are no OSGi modules. Everything ships as client extensions, so the applica
 
 | Path | Contents |
 | :--- | :--- |
-| `client-extensions/liferay-forums-site-initializer` | The site initializer: 10 object definitions, 9 relationships, 8 fragments, 5 pages, 2 display page templates, 4 notification templates, object actions, role grants and the service access policy. |
-| `client-extensions/liferay-forums-etc-spring-boot` | A Spring Boot client extension that works out who to notify when content is posted. Listens on port 58082. |
-| `language/` | The application's language files. `buildLang` generates the per locale files, and the workspace turns the directory into a batch client extension that imports them. |
+| `client-extensions/liferay-forums-site-initializer` | The site initializer: 11 object definitions, 9 relationships, 8 fragments, 5 pages, 2 display page templates, 4 notification templates, 147 language keys, object actions, role grants and the service access policy. |
+| `client-extensions/liferay-forums-etc-spring-boot` | A Spring Boot client extension that works out who to notify when content is posted, and recalculates vote scores. Listens on port 58082. |
 
 ---
 
@@ -46,7 +47,7 @@ To deploy into a local bundle, point the build at it:
 ./gradlew deploy -Pliferay.workspace.home.dir=/path/to/bundles
 ```
 
-That writes three artifacts into `<bundles>/osgi/client-extensions`: the site initializer, the Spring Boot service, and the generated `language` batch. The site is created automatically, because the initializer declares the site it provisions:
+That writes two artifacts into `<bundles>/osgi/client-extensions`: the site initializer and the Spring Boot service. The site is created automatically, because the initializer declares the site it provisions:
 
 ```yaml
     siteExternalReferenceCode: LIFERAY_FORUMS
@@ -57,7 +58,7 @@ Change those two values to provision under a different name or code. Object perm
 
 ### After the First Install
 
-The initializer creates the object definitions a moment after the OAuth application is registered, so the per object scopes the Spring Boot service needs are not on it yet. Those are `c_forummessage.everything`, `c_forumnotification.everything`, `c_forumsubscription.everything`, `c_forumthread.everything` and `c_forumuser.everything`, and without them every call the service makes to `/o/c/...` answers `403`. Redeploying the service registers them against the objects that now exist:
+The initializer creates the object definitions a moment after the OAuth application is registered, so the per object scopes the Spring Boot service needs are not on it yet. Those are `c_forummessage.everything`, `c_forumnotification.everything`, `c_forumsubscription.everything`, `c_forumthread.everything`, `c_forumuser.everything` and `c_forumvote.everything.read`, and without them every call the service makes to `/o/c/...` answers `403`. Redeploying the service registers them against the objects that now exist:
 
 ```bash
 ./gradlew :client-extensions:liferay-forums-etc-spring-boot:clean \
@@ -74,6 +75,8 @@ Both steps are needed once, on a new installation.
 The initializer's permission step only adds and updates grants, so a grant removed from the source tree stays in place on a site that already applied it. A fresh install is unaffected.
 
 Earlier versions let every member add `ForumUser` and `ForumNotification` entries, because the service wrote those rows as the member who posted. The service now writes them as a service account, so members no longer need either grant, and leaving them in place would let a member address a notification to somebody else. On an install created before that change, revoke them: in Control Panel, under Objects, clear the permission that allows the User role to add entries on `ForumUser` and on `ForumNotification`. Members keep the rest of what they had, including reading `ForumUser` for the mention picker and adding and reading their own `ForumSubscription` rows.
+
+Earlier versions also granted every member company wide `VIEW` on `ForumSubscription`, so a fetch filtered only by thread could return another member's subscription row, not just the caller's own. Members now rely on the owner scoped `VIEW` every object grants by default, which limits a fetch to the caller's own rows regardless of the filter. On an install created before that change, revoke the leftover grant: in Control Panel, under Objects, clear the permission that allows the User role to view all entries on `ForumSubscription`.
 
 ### Validation Rules on an Install Created Earlier
 
@@ -118,6 +121,34 @@ rm -f <bundles>/osgi/client-extensions/liferay-forums-site-initializer.zip
 Removing the artifact first matters. Gradle decides whether to rebuild from file contents, so with no source edit the deploy rewrites nothing and Liferay never sees a change to pick up.
 
 Object definitions and their entries are company scoped, so forum content survives recreating the site.
+
+---
+
+## Deploying to Multiple Sites
+
+One built site initializer artifact provisions exactly one site. `siteExternalReferenceCode` and `siteName` in `client-extension.yaml` are baked into the built zip as `site-initializer/site-initializer.json`, but the deployed bundle's own identity — `Bundle-SymbolicName` in `WEB-INF/liferay-plugin-package.properties`, and `id` in `LCP.json` — is derived from the client extension's own key (`liferay-forums-site-initializer`), not from those two fields. So redeploying the same built artifact with a different `siteExternalReferenceCode` does not add a second site alongside the first; it replaces which site the one existing bundle points at, because OSGi resolves the update against the same bundle identity.
+
+`scripts/generate-site-initializer-zips.sh` clones the built artifact once per site, rewriting three files in each copy so every clone gets both its own site and its own bundle identity:
+
+| File in the clone | What changes |
+| :--- | :--- |
+| `site-initializer/site-initializer.json` | `externalReferenceCode` and `name` — the site this clone provisions |
+| `WEB-INF/liferay-plugin-package.properties` | `Bundle-SymbolicName`, suffixed with the site's slug |
+| `LCP.json` | `id`, suffixed to match |
+
+Everything else in the zip — the object definitions, fragments, pages, OAuth companion config — is copied through byte for byte, so every site gets the identical Forums experience.
+
+Edit the `SITES` array at the top of the script to add, remove, or rename sites, then generate and deploy in one step:
+
+```bash
+./scripts/generate-site-initializer-zips.sh --deploy <bundles>/osgi/client-extensions
+```
+
+`--base` defaults to `client-extensions/liferay-forums-site-initializer/dist/liferay-forums-site-initializer.zip`, so build that once first if it is not already there. `--output-dir` (default `out`) is where the generated zips are written before being copied into `--deploy`; omit `--deploy` to only generate them locally. Run `--help` for the full flag list.
+
+Verified on a running bundle: deploying two clones side by side (`Acme, Inc. site` and `Northwind site`) produced two independently `STARTED` OSGi bundles under distinct symbolic names, each provisioning its own site with no interference between them.
+
+The OAuth companion application (`liferay-forums-site-initializer-oahs`) is not cloned — every site's initializer authenticates through the same OAuth application, since all sites in this scenario live in the same company and call back into the same instance.
 
 ---
 
@@ -201,6 +232,16 @@ Topics can be prioritised the way legacy Message Boards prioritises threads.
 
 ---
 
+## Voting
+
+Members vote a topic or reply up or down, and the running total sorts discussions.
+
+- **Casting a vote.** Each message shows an up and a down button with the current score between them. Voting the same direction again removes the vote; voting the other direction switches it. A member holds one vote per message at a time, stored as a `ForumVote` entry linked to the message.
+- **Ordering.** Topic listings sort accepted answers first, then by score descending, then by creation date, so the most useful reply in a thread rises to the top.
+- **Score integrity.** The browser only ever creates or deletes its own `ForumVote` entries, which the `ADD_OBJECT_ENTRY` permission covers; a member holds `UPDATE` on `ForumMessage` only for messages they authored, not for the ones they vote on. Casting a vote updates the score on screen immediately, then an `onAfterAdd`/`onAfterDelete` object action on `ForumVote` calls the Spring Boot service, which recounts every vote on the message and writes the authoritative score back as the service account. Recalculating from the vote rows, rather than trusting whatever number the client last displayed, is what makes voting on someone else's post — the common case — actually persist a score at all.
+
+---
+
 ## User Mentions
 
 Members can mention each other in a topic or a reply.
@@ -233,14 +274,12 @@ The moderation and category administration pages are reachable by any member who
 
 ## Language Keys
 
-Every string the application displays comes from a language key. The generic ones resolve against Liferay's own language files, and the forum specific ones live in `language/Language.properties`.
-
-`./gradlew buildLang` regenerates the per locale files, and the workspace turns the directory into a batch client extension that imports the keys as language overrides, so no module is involved.
+Every string the application displays comes from a language key. The generic ones resolve against Liferay's own language files, and the forum specific ones live in `site-initializer/plo-entries.json`, a flat array of `{key, value}` entries where `value` maps each locale to its translation. There is no separate language module and no build step: the site initializer's `setPLOEntries` handler imports the entries directly as portal language overrides.
 
 Two things follow from that:
 
-- **The shipped rows are English.** The per locale files are generated as copies until translations are supplied, so a translated forum means providing those translations and rebuilding.
-- **The import applies to the default instance.** Serving forums from a second virtual instance means applying the keys there as well.
+- **Translations ship with the entries, not after them.** All 147 keys already carry a translation for every one of the 63 locales Liferay ships, so there is no English-only placeholder step to fill in later. Adding a key means adding both the key and its full set of locale values to `plo-entries.json`.
+- **The import applies to the default instance.** `setPLOEntries` writes to the company running the initializer, so serving forums from a second virtual instance means running the initializer there as well.
 
 A key that shares its name with one of Liferay's own keys overrides that key for the whole instance, not only for the forum site, so the application defines its own keys and reuses Liferay's wording where the wording already exists.
 
@@ -337,10 +376,8 @@ cp .env.example .env   # then edit values
 
 **A notification in the panel is not a link.** Opening it marks it read and returns to the notifications list. The email carries a link to the discussion, so that is the route to the content.
 
-**View counts exclude anonymous readers.** A topic's view count advances for signed in members only, because the count is written back through an endpoint that anonymous callers cannot use.
-
 **Recent activity is ordered by latest reply.** The tab surfaces the most recently active topics rather than the most replied to, so a new topic with one reply appears above an older one with many.
 
-**Object definitions have headroom for two more.** The application ships 10, and a site initializer becomes unreliable beyond 12. Ship any further objects outside the initializer, as a batch client extension or through the object API after deployment.
+**Object definitions have headroom for one more.** The application ships 11, and a site initializer becomes unreliable beyond 12. Ship any further objects outside the initializer, as a batch client extension or through the object API after deployment.
 
 **Use a production grade database.** Hypersonic, which the development bundle ships by default, does not sort on text object fields and serialises writes in a way the notification path can stall on. Use MySQL, PostgreSQL or another supported database for anything beyond a first look.
