@@ -98,15 +98,6 @@
 			"required": false
 		},
 		{
-			"DBType": "Integer",
-			"businessType": "Integer",
-			"label": {
-				"en_US": "View Count"
-			},
-			"name": "viewCount",
-			"required": false
-		},
-		{
 			"DBType": "Boolean",
 			"businessType": "Boolean",
 			"label": {

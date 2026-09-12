@@ -224,8 +224,6 @@ if (messageList) {
 		'<svg viewBox="0 0 16 16" fill="currentColor"><path d="M14 1H2C.9 1 0 1.9 0 3v7c0 1.1.9 2 2 2h3l3 3 3-3h3c1.1 0 2-.9 2-2V3c0-1.1-.9-2-2-2zm0 9H2V3h12v7z"/></svg>';
 	const clockIcon =
 		'<svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.6 0 0 3.6 0 8s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8zm0 14c-3.3 0-6-2.7-6-6s2.7-6 6-6 6 2.7 6 6-2.7 6-6 6z"/><path d="M9 4H7v5l3.5 2.1.5-.9L9 8.5z"/></svg>';
-	const eyeIcon =
-		'<svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 3C3.58 3 0 8 0 8s3.58 5 8 5 8-5 8-5-3.58-5-8-5zm0 8.5c-1.93 0-3.5-1.57-3.5-3.5S6.07 4.5 8 4.5 11.5 6.07 11.5 8 9.93 11.5 8 11.5z"/><circle cx="8" cy="8" r="2"/></svg>';
 
 	/* Utility: relative time */
 	const timeAgo = function (dateStr) {
@@ -1017,7 +1015,6 @@ if (messageList) {
 							question,
 							threadMessages,
 							threadSuspiciousActivities,
-							viewCount,
 						} = msg;
 
 						const title =
@@ -1216,11 +1213,6 @@ if (messageList) {
 										messageList.dataset.labelXReplies ||
 										'{0} replies'
 									).replace('{0}', replyCount)) +
-							'</span>' +
-							'<span class="forums-message-card__meta-item">' +
-							eyeIcon +
-							' ' +
-							(viewCount || 0) +
 							'</span>' +
 							'</div>' +
 							lockedBadge +

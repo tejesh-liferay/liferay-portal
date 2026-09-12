@@ -339,7 +339,6 @@ if (messageDetail) {
 
 		const replyPageSize = 10;
 		let currentReplyPage = 1;
-		let newViewCount = 0;
 		let isBanned = false;
 
 		/* Whether the current user may lock/unlock this topic. Gated the same
@@ -1576,7 +1575,6 @@ if (messageDetail) {
 						question,
 						r_categoryThreads_c_forumCategoryId,
 						threadSuspiciousActivities,
-						viewCount,
 					} = msg;
 
 					isThreadLocked = !!locked;
@@ -1900,59 +1898,6 @@ if (messageDetail) {
 								doToggle();
 							}
 						});
-					}
-
-					/* Increment viewCount via REST PATCH (unique per session) */
-					let currentViewCount = viewCount;
-					currentViewCount = currentViewCount || 0;
-					const viewStorageKey =
-						'forums_viewed_' + currentUserId + '_' + messageId;
-					let alreadyViewed = false;
-					try {
-						alreadyViewed =
-							!!sessionStorage.getItem(viewStorageKey);
-					}
-					catch (error) {}
-
-					if (!alreadyViewed && Liferay.ThemeDisplay.isSignedIn()) {
-						newViewCount = currentViewCount + 1;
-						Liferay.Util.fetch(
-							portalURL + '/o/c/forumthreads/' + messageId,
-							{
-								body: JSON.stringify({viewCount: newViewCount}),
-								headers,
-								method: 'PATCH',
-							}
-						)
-							.then((r) => {
-								return r.json().then((body) => {
-									if (r.ok) {
-										try {
-											sessionStorage.setItem(
-												viewStorageKey,
-												'1'
-											);
-										}
-										catch (error) {}
-									}
-									else {
-										console.error(
-											'View count update failed:',
-											r.status,
-											body
-										);
-									}
-								});
-							})
-							.catch((error) => {
-								console.error(
-									'View count update error:',
-									error
-								);
-							});
-					}
-					else {
-						newViewCount = currentViewCount;
 					}
 
 					isMessageQuestion = question === true;
