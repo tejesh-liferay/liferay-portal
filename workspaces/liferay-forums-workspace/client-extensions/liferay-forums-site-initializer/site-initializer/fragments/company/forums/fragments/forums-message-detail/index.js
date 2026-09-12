@@ -1587,9 +1587,11 @@ if (messageDetail) {
 						canUpdateMessage = true;
 					}
 
-					/* Subscription state lives in the ForumSubscription object. Object entry
-		   permissions scope the list to the caller, so a match means "I am
-		   subscribed". */
+					/* Subscription state lives in the ForumSubscription object.
+		   ForumSubscription VIEW is granted at company scope, so the list
+		   is NOT scoped to the caller; the filter must also match the
+		   current user's subscriberUserId or any subscriber's row can be
+		   mistaken for "I am subscribed". */
 
 					let subscribeBtn = messageDetail.querySelector(
 						'#forumsDetailSubscribeBtn'
@@ -1609,7 +1611,8 @@ if (messageDetail) {
 						const subscriptionFilter = encodeURIComponent(
 							"r_threadSubscriptions_c_forumThreadId eq '" +
 								messageId +
-								"'"
+								"' and subscriberUserId eq " +
+								parseInt(currentUserId, 10)
 						);
 
 						Liferay.Util.fetch(
