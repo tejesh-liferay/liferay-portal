@@ -9,13 +9,17 @@
 	"recipientType": "email",
 	"recipients": [
 		{
+			"bcc": {
+				"en_US": "[%FORUMNOTIFICATION_RECIPIENTEMAILADDRESS%]"
+			},
+			"bccType": "email",
 			"from": "forums-noreply@example.xyz",
 			"fromName": {
 				"en_US": "Community Forums"
 			},
 			"singleRecipient": true,
 			"to": {
-				"en_US": "[%FORUMNOTIFICATION_RECIPIENTEMAILADDRESS%]"
+				"en_US": "forums-noreply@example.xyz"
 			},
 			"toType": "email"
 		}
