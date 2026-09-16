@@ -320,7 +320,7 @@ public class ForumNotificationRestController extends BaseRestController {
 		}
 
 		_forumNotificationService.notifyAll(
-			recipients, siteId, "mention", author, messageTitle,
+			recipients, "mention", author, messageTitle,
 			_truncate(bodyPreview, 300), url, authToken);
 
 		return recipients;
@@ -412,7 +412,7 @@ public class ForumNotificationRestController extends BaseRestController {
 		}
 
 		_forumNotificationService.notifyAll(
-			recipientUserIds, siteId, "reply", replyAuthor, messageTitle,
+			recipientUserIds, "reply", replyAuthor, messageTitle,
 			_truncate(replyBody, 300), url, authToken);
 
 		List<Long> mentionRecipientUserIds = _notifyMentions(

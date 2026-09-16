@@ -31,24 +31,6 @@
 			"required": false
 		},
 		{
-			"DBType": "Long",
-			"businessType": "LongInteger",
-			"label": {
-				"en_US": "Root Message ID"
-			},
-			"name": "rootMessageId",
-			"required": false
-		},
-		{
-			"DBType": "Long",
-			"businessType": "LongInteger",
-			"label": {
-				"en_US": "Root Message User ID"
-			},
-			"name": "rootMessageUserId",
-			"required": false
-		},
-		{
 			"DBType": "String",
 			"businessType": "Text",
 			"indexed": true,
@@ -59,15 +41,6 @@
 			},
 			"localized": true,
 			"name": "messageTitle",
-			"required": false
-		},
-		{
-			"DBType": "Long",
-			"businessType": "LongInteger",
-			"label": {
-				"en_US": "Last Post By User ID"
-			},
-			"name": "lastPostByUserId",
 			"required": false
 		},
 		{

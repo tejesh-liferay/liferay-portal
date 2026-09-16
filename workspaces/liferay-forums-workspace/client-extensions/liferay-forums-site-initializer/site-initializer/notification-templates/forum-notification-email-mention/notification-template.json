@@ -5,7 +5,6 @@
 	"name_i18n": {
 		"en_US": "Forum Notification Email Mention"
 	},
-	"objectDefinitionExternalReferenceCode": "FORUM-NOTIFICATION",
 	"recipientType": "email",
 	"recipients": [
 		{

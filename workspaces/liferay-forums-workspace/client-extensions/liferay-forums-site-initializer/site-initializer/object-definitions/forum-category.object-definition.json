@@ -42,24 +42,6 @@
 			},
 			"name": "categoryDescription",
 			"required": false
-		},
-		{
-			"DBType": "String",
-			"businessType": "Text",
-			"label": {
-				"en_US": "Display Style"
-			},
-			"name": "displayStyle",
-			"required": false
-		},
-		{
-			"DBType": "String",
-			"businessType": "Text",
-			"label": {
-				"en_US": "Friendly URL"
-			},
-			"name": "friendlyURL",
-			"required": false
 		}
 	],
 	"objectFolderExternalReferenceCode": "FORUMS-FOLDER",

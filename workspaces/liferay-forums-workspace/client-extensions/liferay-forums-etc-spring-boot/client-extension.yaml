@@ -7,10 +7,10 @@ liferay-forums-etc-spring-boot-oahs:
     scopes:
         -   Liferay.Headless.Admin.Site.everything.read
         -   Liferay.Headless.Admin.User.everything.read
+        -   Liferay.Notification.REST.everything
         -   Liferay.Object.Admin.REST.everything.read
         -   c_forumban.everything.read
         -   c_forummessage.everything
-        -   c_forumnotification.everything
         -   c_forumsubscription.everything.read
         -   c_forumsuspiciousactivity.everything
         -   c_forumthread.everything

@@ -7,6 +7,7 @@ package com.liferay.forums.service;
 
 import com.liferay.forums.client.LiferayApiClient;
 import com.liferay.petra.string.StringBundler;
+import com.liferay.petra.string.StringUtil;
 
 import java.net.URLEncoder;
 
@@ -19,6 +20,8 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -40,20 +43,10 @@ import reactor.core.publisher.Mono;
 public class ForumNotificationService {
 
 	public void notifyAll(
-		List<Long> recipientUserIds, long siteId, String kind,
-		String authorName, String topicTitle, String bodyExcerpt, String url,
-		String authToken) {
+		List<Long> recipientUserIds, String kind, String authorName,
+		String topicTitle, String bodyExcerpt, String url, String authToken) {
 
 		if (recipientUserIds.isEmpty()) {
-			return;
-		}
-
-		if (siteId <= 0L) {
-			if (_log.isWarnEnabled()) {
-				_log.warn(
-					"Unable to send forum notifications without a site scope");
-			}
-
 			return;
 		}
 
@@ -73,8 +66,8 @@ public class ForumNotificationService {
 				Math.min(start + _BCC_BATCH_SIZE, bccEmailAddresses.size()));
 
 			if (_sendBulkNotification(
-					bccEmailAddressesBatch, siteId, kind, authorName,
-					topicTitle, bodyExcerpt, url, authToken)) {
+					bccEmailAddressesBatch, kind, authorName, topicTitle,
+					bodyExcerpt, url, authToken)) {
 
 				sentCount += bccEmailAddressesBatch.size();
 			}
@@ -160,33 +153,84 @@ public class ForumNotificationService {
 		);
 	}
 
-	private Mono<Long> _purge(String response, String authToken) {
-		long entryId = new JSONObject(
-			response
-		).optLong(
-			"id", 0L
-		);
+	private NotificationTemplateContent _getNotificationTemplateContent(
+		String kind, String authToken) {
 
-		if (!_purgeEnabled || (entryId <= 0L)) {
-			return Mono.just(entryId);
-		}
+		return _notificationTemplateContents.computeIfAbsent(
+			kind,
+			key -> {
+				String externalReferenceCode = Objects.equals(key, "mention") ?
+					_NOTIFICATION_TEMPLATE_ERC_MENTION :
+						_NOTIFICATION_TEMPLATE_ERC_REPLY;
 
-		return _liferayApiClient.deleteAsync(
-			"/o/c/forumnotifications/" + entryId, authToken
-		).thenReturn(
-			entryId
-		).onErrorResume(
-			throwable -> {
-				if (_log.isWarnEnabled()) {
-					_log.warn(
-						StringBundler.concat(
-							"Unable to purge forum notification ", entryId,
-							": ", throwable.getMessage()));
+				try {
+					JSONObject responseJSONObject = new JSONObject(
+						_liferayApiClient.get(
+							StringBundler.concat(
+								"/o/notification/v1.0/notification-templates",
+								"/by-external-reference-code/",
+								externalReferenceCode),
+							authToken));
+
+					JSONObject recipientJSONObject =
+						responseJSONObject.getJSONArray(
+							"recipients"
+						).getJSONObject(
+							0
+						);
+
+					NotificationTemplateContent notificationTemplateContent =
+						new NotificationTemplateContent();
+
+					notificationTemplateContent._body =
+						responseJSONObject.getJSONObject(
+							"body"
+						).getString(
+							"en_US"
+						);
+					notificationTemplateContent._from =
+						recipientJSONObject.getString("from");
+					notificationTemplateContent._fromName =
+						recipientJSONObject.getJSONObject(
+							"fromName"
+						).getString(
+							"en_US"
+						);
+					notificationTemplateContent._subject =
+						responseJSONObject.getJSONObject(
+							"subject"
+						).getString(
+							"en_US"
+						);
+
+					return notificationTemplateContent;
 				}
+				catch (Exception exception) {
+					_log.error(
+						StringBundler.concat(
+							"Unable to load notification template \"",
+							externalReferenceCode, "\": ",
+							exception.getMessage()));
 
-				return Mono.just(entryId);
-			}
-		);
+					return null;
+				}
+			});
+	}
+
+	private String _renderMergeTags(
+		String authorName, String bodyExcerpt, String template,
+		String topicTitle, String url) {
+
+		template = StringUtil.replace(
+			template, "[%FORUMNOTIFICATION_AUTHORNAME%]", authorName);
+		template = StringUtil.replace(
+			template, "[%FORUMNOTIFICATION_BODYEXCERPT%]", bodyExcerpt);
+		template = StringUtil.replace(
+			template, "[%FORUMNOTIFICATION_NOTIFICATIONURL%]", url);
+		template = StringUtil.replace(
+			template, "[%FORUMNOTIFICATION_TOPICTITLE%]", topicTitle);
+
+		return template;
 	}
 
 	private void _resolveEmailAddresses(
@@ -268,22 +312,57 @@ public class ForumNotificationService {
 	}
 
 	private boolean _sendBulkNotification(
-		List<String> bccEmailAddresses, long siteId, String kind,
-		String authorName, String topicTitle, String bodyExcerpt, String url,
-		String authToken) {
+		List<String> bccEmailAddresses, String kind, String authorName,
+		String topicTitle, String bodyExcerpt, String url, String authToken) {
 
-		String path = "/o/c/forumnotifications/scopes/" + siteId;
+		NotificationTemplateContent notificationTemplateContent =
+			_getNotificationTemplateContent(kind, authToken);
+
+		if (notificationTemplateContent == null) {
+			return false;
+		}
+
 		String fullUrl = _siteBaseUrl + url;
 
+		JSONObject recipientJSONObject = new JSONObject();
+
+		recipientJSONObject.put(
+			"bcc", String.join(",", bccEmailAddresses)
+		).put(
+			"from", notificationTemplateContent._from
+		).put(
+			"fromName", notificationTemplateContent._fromName
+		).put(
+			"to", notificationTemplateContent._from
+		);
+
+		JSONObject payloadJSONObject = new JSONObject();
+
+		payloadJSONObject.put(
+			"body",
+			_renderMergeTags(
+				authorName, bodyExcerpt, notificationTemplateContent._body,
+				topicTitle, fullUrl)
+		).put(
+			"recipients",
+			new JSONArray(
+			).put(
+				recipientJSONObject
+			)
+		).put(
+			"subject",
+			_renderMergeTags(
+				authorName, bodyExcerpt, notificationTemplateContent._subject,
+				topicTitle, fullUrl)
+		).put(
+			"type", "email"
+		);
+
 		return _liferayApiClient.postAsync(
-			path, authToken,
-			_toPayload(
-				String.join(",", bccEmailAddresses), kind, authorName,
-				topicTitle, bodyExcerpt, fullUrl)
-		).flatMap(
-			response -> _purge(response, authToken)
+			"/o/notification/v1.0/notification-queue-entries", authToken,
+			payloadJSONObject.toString()
 		).map(
-			entryId -> true
+			response -> true
 		).onErrorResume(
 			throwable -> {
 				_log.error(
@@ -314,34 +393,15 @@ public class ForumNotificationService {
 		return sb.toString();
 	}
 
-	private String _toPayload(
-		String bccEmailAddresses, String kind, String authorName,
-		String topicTitle, String bodyExcerpt, String url) {
-
-		JSONObject payloadJSONObject = new JSONObject();
-
-		payloadJSONObject.put(
-			"authorName", authorName
-		).put(
-			"bodyExcerpt", bodyExcerpt
-		).put(
-			"notificationKind", kind
-		).put(
-			"notificationUrl", url
-		).put(
-			"recipientEmailAddress", bccEmailAddresses
-		).put(
-			"recipientUserId", 0L
-		).put(
-			"topicTitle", topicTitle
-		);
-
-		return payloadJSONObject.toString();
-	}
-
 	private static final int _BCC_BATCH_SIZE = 200;
 
 	private static final int _EMAIL_LOOKUP_BATCH_SIZE = 50;
+
+	private static final String _NOTIFICATION_TEMPLATE_ERC_MENTION =
+		"FORUM-NOTIFICATION-EMAIL-MENTION";
+
+	private static final String _NOTIFICATION_TEMPLATE_ERC_REPLY =
+		"FORUM-NOTIFICATION-EMAIL-REPLY";
 
 	private static final Log _log = LogFactory.getLog(
 		ForumNotificationService.class);
@@ -349,13 +409,22 @@ public class ForumNotificationService {
 	@Autowired
 	private LiferayApiClient _liferayApiClient;
 
+	private final Map<String, NotificationTemplateContent>
+		_notificationTemplateContents = new ConcurrentHashMap<>();
+
 	@Value("${forums.notification.timeout.seconds:60}")
 	private int _notificationTimeoutSeconds;
 
-	@Value("${forums.notification.purge:true}")
-	private boolean _purgeEnabled;
-
 	@Value("${forums.site.base.url:https://www.example.xyz}")
 	private String _siteBaseUrl;
+
+	private static class NotificationTemplateContent {
+
+		private String _body;
+		private String _from;
+		private String _fromName;
+		private String _subject;
+
+	}
 
 }

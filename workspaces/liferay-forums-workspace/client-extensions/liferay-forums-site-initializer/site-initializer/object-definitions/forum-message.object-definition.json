@@ -25,45 +25,9 @@
 			"DBType": "Long",
 			"businessType": "LongInteger",
 			"label": {
-				"en_US": "Class Name ID"
-			},
-			"name": "classNameId",
-			"required": false
-		},
-		{
-			"DBType": "Long",
-			"businessType": "LongInteger",
-			"label": {
-				"en_US": "Class PK"
-			},
-			"name": "classPK",
-			"required": false
-		},
-		{
-			"DBType": "Long",
-			"businessType": "LongInteger",
-			"label": {
-				"en_US": "Root Message ID"
-			},
-			"name": "rootMessageId",
-			"required": false
-		},
-		{
-			"DBType": "Long",
-			"businessType": "LongInteger",
-			"label": {
 				"en_US": "Parent Message ID"
 			},
 			"name": "parentMessageId",
-			"required": false
-		},
-		{
-			"DBType": "String",
-			"businessType": "Text",
-			"label": {
-				"en_US": "Tree Path"
-			},
-			"name": "treePath",
 			"required": false
 		},
 		{
@@ -78,15 +42,6 @@
 			"localized": true,
 			"name": "subject",
 			"required": true
-		},
-		{
-			"DBType": "String",
-			"businessType": "Text",
-			"label": {
-				"en_US": "URL Subject"
-			},
-			"name": "urlSubject",
-			"required": false
 		},
 		{
 			"DBType": "Clob",
@@ -110,30 +65,12 @@
 			"required": false
 		},
 		{
-			"DBType": "Boolean",
-			"businessType": "Boolean",
-			"label": {
-				"en_US": "Anonymous"
-			},
-			"name": "anonymous",
-			"required": false
-		},
-		{
 			"DBType": "BigDecimal",
 			"businessType": "PrecisionDecimal",
 			"label": {
 				"en_US": "Priority"
 			},
 			"name": "priority",
-			"required": false
-		},
-		{
-			"DBType": "Boolean",
-			"businessType": "Boolean",
-			"label": {
-				"en_US": "Allow Pingbacks"
-			},
-			"name": "allowPingbacks",
 			"required": false
 		},
 		{

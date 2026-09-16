@@ -5,25 +5,7 @@
 		],
 		"primKey": "0",
 		"resourceName": "[$OBJECT_DEFINITION_CLASS_NAME:ForumBan$]",
-		"roleName": "Guest",
-		"scope": 1
-	},
-	{
-		"actionIds": [
-			"VIEW"
-		],
-		"primKey": "0",
-		"resourceName": "[$OBJECT_DEFINITION_CLASS_NAME:ForumBan$]",
 		"roleName": "User",
-		"scope": 1
-	},
-	{
-		"actionIds": [
-			"VIEW"
-		],
-		"primKey": "0",
-		"resourceName": "[$OBJECT_DEFINITION_CLASS_NAME:ForumCategory$]",
-		"roleName": "Guest",
 		"scope": 1
 	},
 	{
@@ -41,15 +23,6 @@
 		],
 		"primKey": "0",
 		"resourceName": "[$OBJECT_DEFINITION_CLASS_NAME:ForumMessage$]",
-		"roleName": "Guest",
-		"scope": 1
-	},
-	{
-		"actionIds": [
-			"VIEW"
-		],
-		"primKey": "0",
-		"resourceName": "[$OBJECT_DEFINITION_CLASS_NAME:ForumMessage$]",
 		"roleName": "User",
 		"scope": 1
 	},
@@ -59,34 +32,7 @@
 		],
 		"primKey": "0",
 		"resourceName": "[$OBJECT_DEFINITION_CLASS_NAME:ForumMessageAttachment$]",
-		"roleName": "Guest",
-		"scope": 1
-	},
-	{
-		"actionIds": [
-			"VIEW"
-		],
-		"primKey": "0",
-		"resourceName": "[$OBJECT_DEFINITION_CLASS_NAME:ForumMessageAttachment$]",
 		"roleName": "User",
-		"scope": 1
-	},
-	{
-		"actionIds": [
-			"VIEW"
-		],
-		"primKey": "0",
-		"resourceName": "[$OBJECT_DEFINITION_CLASS_NAME:ForumNotification$]",
-		"roleName": "User",
-		"scope": 1
-	},
-	{
-		"actionIds": [
-			"VIEW"
-		],
-		"primKey": "0",
-		"resourceName": "[$OBJECT_DEFINITION_CLASS_NAME:ForumSuspiciousActivity$]",
-		"roleName": "Guest",
 		"scope": 1
 	},
 	{
@@ -104,33 +50,6 @@
 		],
 		"primKey": "0",
 		"resourceName": "[$OBJECT_DEFINITION_CLASS_NAME:ForumThread$]",
-		"roleName": "Guest",
-		"scope": 1
-	},
-	{
-		"actionIds": [
-			"VIEW"
-		],
-		"primKey": "0",
-		"resourceName": "[$OBJECT_DEFINITION_CLASS_NAME:ForumThread$]",
-		"roleName": "User",
-		"scope": 1
-	},
-	{
-		"actionIds": [
-			"VIEW"
-		],
-		"primKey": "0",
-		"resourceName": "[$OBJECT_DEFINITION_CLASS_NAME:ForumThreadFlag$]",
-		"roleName": "Guest",
-		"scope": 1
-	},
-	{
-		"actionIds": [
-			"VIEW"
-		],
-		"primKey": "0",
-		"resourceName": "[$OBJECT_DEFINITION_CLASS_NAME:ForumThreadFlag$]",
 		"roleName": "User",
 		"scope": 1
 	},
@@ -141,15 +60,6 @@
 		"primKey": "0",
 		"resourceName": "[$OBJECT_DEFINITION_CLASS_NAME:ForumUser$]",
 		"roleName": "User",
-		"scope": 1
-	},
-	{
-		"actionIds": [
-			"VIEW"
-		],
-		"primKey": "0",
-		"resourceName": "[$OBJECT_DEFINITION_CLASS_NAME:ForumVote$]",
-		"roleName": "Guest",
 		"scope": 1
 	},
 	{
@@ -220,15 +130,6 @@
 			"ADD_OBJECT_ENTRY"
 		],
 		"primKey": "0",
-		"resourceName": "com.liferay.object#[$OBJECT_DEFINITION_ID:ForumThreadFlag$]",
-		"roleName": "User",
-		"scope": 1
-	},
-	{
-		"actionIds": [
-			"ADD_OBJECT_ENTRY"
-		],
-		"primKey": "0",
 		"resourceName": "com.liferay.object#[$OBJECT_DEFINITION_ID:ForumVote$]",
 		"roleName": "User",
 		"scope": 1
@@ -261,18 +162,7 @@
 			"UPDATE",
 			"DELETE"
 		],
-		
-		"resourceName": "[$OBJECT_DEFINITION_CLASS_NAME:ForumThreadFlag$]",
-		"roleName": "Forum Moderator",
-		"scope": 1
-	},
-	{
-		"actionIds": [
-			"VIEW",
-			"UPDATE",
-			"DELETE"
-		],
-		
+
 		"resourceName": "[$OBJECT_DEFINITION_CLASS_NAME:ForumSuspiciousActivity$]",
 		"roleName": "Forum Moderator",
 		"scope": 1
