@@ -217,6 +217,21 @@ if (messageList) {
 		searchInput.value = searchQuery;
 	}
 
+	/* Restore the sort tab from the URL so a refresh keeps the tab the user
+	   was on instead of always reverting to "Recent". */
+	const sortParam = urlParams.get('sort');
+	const sortParamValid =
+		sortParam &&
+		[...tabLinks].some((tab) => tab.dataset.sort === sortParam);
+	if (sortParamValid) {
+		currentSort = sortParam;
+		tabLinks.forEach((tab) => {
+			const active = tab.dataset.sort === sortParam;
+			tab.classList.toggle('active', active);
+			tab.setAttribute('aria-selected', active ? 'true' : 'false');
+		});
+	}
+
 	/* Icons */
 	const checkIcon =
 		'<svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.6 0 0 3.6 0 8s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8zm3.7 6.3l-4 4c-.2.2-.4.3-.7.3s-.5-.1-.7-.3l-2-2c-.4-.4-.4-1 0-1.4s1-.4 1.4 0L7 8.2l3.3-3.3c.4-.4 1-.4 1.4 0s.4 1 0 1.4z"/></svg>';
@@ -1607,6 +1622,16 @@ if (messageList) {
 			this.setAttribute('aria-selected', 'true');
 			currentSort = this.dataset.sort;
 			currentPage = 1;
+
+			const params = new URLSearchParams(window.location.search);
+			params.set('sort', currentSort);
+			history.pushState(
+				null,
+				'',
+				window.location.pathname +
+					(params.toString() ? '?' + params.toString() : '')
+			);
+
 			loadMessages();
 		});
 	});

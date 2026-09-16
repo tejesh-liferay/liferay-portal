@@ -36,9 +36,30 @@ if (forumsMod) {
 	const paginationNav = forumsMod.querySelector('#forumsModPagination');
 	const paginationUl = forumsMod.querySelector('#forumsModPaginationUl');
 
-	let currentFilter = 'pending'; /* 'pending' | 'validated' | 'all' */
+	let currentFilter = 'pending'; /* 'pending' | 'validated' | 'all' | 'bans' */
 	let currentPage = 1;
 	const pageSize = 20;
+
+	/* Restore the filter tab from the URL so a refresh keeps the tab the
+	   user was on instead of always reverting to "Pending". */
+	const modTabLinks = forumsMod.querySelectorAll('#forumsModTabs .nav-link');
+	const filterParam = new URLSearchParams(window.location.search).get(
+		'filter'
+	);
+	if (
+		filterParam &&
+		[...modTabLinks].some((tab) => tab.dataset.filter === filterParam)
+	) {
+		currentFilter = filterParam;
+		modTabLinks.forEach((tab) => {
+			const active = tab.dataset.filter === filterParam;
+			tab.classList.toggle('active', active);
+			tab.setAttribute('aria-selected', active ? 'true' : 'false');
+			if (active && flagList) {
+				flagList.setAttribute('aria-labelledby', tab.id);
+			}
+		});
+	}
 
 	/* Reason labels map */
 	const reasonLabels = {
@@ -245,15 +266,13 @@ if (forumsMod) {
 	};
 
 	/* Tab click handlers */
-	forumsMod.querySelectorAll('#forumsModTabs .nav-link').forEach((tab) => {
+	modTabLinks.forEach((tab) => {
 		tab.addEventListener('click', function (event) {
 			event.preventDefault();
-			forumsMod
-				.querySelectorAll('#forumsModTabs .nav-link')
-				.forEach((t) => {
-					t.classList.remove('active');
-					t.setAttribute('aria-selected', 'false');
-				});
+			modTabLinks.forEach((t) => {
+				t.classList.remove('active');
+				t.setAttribute('aria-selected', 'false');
+			});
 			this.classList.add('active');
 			this.setAttribute('aria-selected', 'true');
 			if (flagList) {
@@ -261,6 +280,16 @@ if (forumsMod) {
 			}
 			currentFilter = this.dataset.filter;
 			currentPage = 1;
+
+			const params = new URLSearchParams(window.location.search);
+			params.set('filter', currentFilter);
+			history.pushState(
+				null,
+				'',
+				window.location.pathname +
+					(params.toString() ? '?' + params.toString() : '')
+			);
+
 			if (currentFilter === 'bans') {
 				loadBans();
 			}
@@ -1107,5 +1136,11 @@ if (forumsMod) {
 			});
 	};
 
-	loadFlags();
+	/* Initial load */
+	if (currentFilter === 'bans') {
+		loadBans();
+	}
+	else {
+		loadFlags();
+	}
 }
