@@ -13,7 +13,7 @@ liferay-forums-etc-spring-boot-oahs:
         -   c_forumnotification.everything
         -   c_forumsubscription.everything.read
         -   c_forumsuspiciousactivity.everything
-        -   c_forumthread.everything.read
+        -   c_forumthread.everything
         -   c_forumuser.everything
         -   c_forumvote.everything.read
     type: oAuthApplicationHeadlessServer
@@ -50,6 +50,11 @@ liferay-forums-etc-spring-boot-object-action-recreate-deleted-suspicious-activit
     name: Liferay Forums Etc Spring Boot Object Action Recreate Deleted Suspicious Activity
     oAuth2ApplicationExternalReferenceCode: liferay-forums-etc-spring-boot-oaua
     resourcePath: /object-action/recreate-deleted-suspicious-activity
+    type: objectAction
+liferay-forums-etc-spring-boot-object-action-update-thread-last-post-date:
+    name: Liferay Forums Etc Spring Boot Object Action Update Thread Last Post Date
+    oAuth2ApplicationExternalReferenceCode: liferay-forums-etc-spring-boot-oaua
+    resourcePath: /object-action/update-thread-last-post-date
     type: objectAction
 liferay-forums-etc-spring-boot-object-action-updated-reply:
     name: Liferay Forums Etc Spring Boot Object Action Updated Reply
