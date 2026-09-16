@@ -352,6 +352,29 @@ if (forumsMod) {
 		}
 	};
 
+	/* HATEOAS: check collection-level actions for write permission and show
+	   or hide the card accordingly. Both loadFlags and loadBans call this,
+	   since either may run first depending on the tab restored from the
+	   URL. */
+	const applyPermissionVisibility = function (hasPermission) {
+		if (hasPermission) {
+			if (noPermissionsEl) {
+				noPermissionsEl.style.display = 'none';
+			}
+			if (cardEl) {
+				cardEl.style.display = '';
+			}
+		}
+		else {
+			if (cardEl) {
+				cardEl.style.display = 'none';
+			}
+			if (noPermissionsEl) {
+				noPermissionsEl.style.display = '';
+			}
+		}
+	};
+
 	const loadBans = function () {
 		if (loadingEl) {
 			loadingEl.style.display = 'block';
@@ -379,6 +402,17 @@ if (forumsMod) {
 				if (loadingEl) {
 					loadingEl.style.display = 'none';
 				}
+
+				const {actions} = data;
+				const hasPermission = !!(
+					actions &&
+					(actions['create'] || actions['post'] || actions['POST'])
+				);
+				applyPermissionVisibility(hasPermission);
+				if (!hasPermission) {
+					return;
+				}
+
 				const items = data.items || [];
 				const lastPage = data.lastPage || 1;
 
@@ -577,33 +611,13 @@ if (forumsMod) {
 					loadingEl.style.display = 'none';
 				}
 
-				/* HATEOAS: check collection-level actions for write permission */
 				const {actions} = data;
 				const hasPermission = !!(
 					actions &&
 					(actions['create'] || actions['post'] || actions['POST'])
 				);
-
-				if (hasPermission) {
-
-					/* User has moderation permissions — show the card */
-					if (noPermissionsEl) {
-						noPermissionsEl.style.display = 'none';
-					}
-					if (cardEl) {
-						cardEl.style.display = '';
-					}
-				}
-				else {
-
-					/* Non-privileged user — show the OOTB permissions warning */
-					if (cardEl) {
-						cardEl.style.display = 'none';
-					}
-					if (noPermissionsEl) {
-						noPermissionsEl.style.display = '';
-					}
-
+				applyPermissionVisibility(hasPermission);
+				if (!hasPermission) {
 					return;
 				}
 
