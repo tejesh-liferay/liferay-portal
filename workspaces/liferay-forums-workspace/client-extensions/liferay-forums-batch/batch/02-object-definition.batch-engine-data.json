@@ -166,6 +166,41 @@
 				}
 			],
 			"objectFolderExternalReferenceCode": "C2M0_FORUMS",
+			"objectRelationships": [
+				{
+					"deletionType": "cascade",
+					"externalReferenceCode": "C2M0_CATEGORY_THREADS",
+					"label": {
+						"en_US": "Category Threads"
+					},
+					"name": "categoryThreads",
+					"objectDefinitionExternalReferenceCode1": "C2M0_CATEGORY",
+					"objectDefinitionExternalReferenceCode2": "C2M0_THREAD",
+					"type": "oneToMany"
+				},
+				{
+					"deletionType": "cascade",
+					"externalReferenceCode": "C2M0_CATEGORY_MESSAGES",
+					"label": {
+						"en_US": "Category Messages"
+					},
+					"name": "categoryMessages",
+					"objectDefinitionExternalReferenceCode1": "C2M0_CATEGORY",
+					"objectDefinitionExternalReferenceCode2": "C2M0_MESSAGE",
+					"type": "oneToMany"
+				},
+				{
+					"deletionType": "cascade",
+					"externalReferenceCode": "C2M0_CATEGORY_SUBCATEGORIES",
+					"label": {
+						"en_US": "Category Subcategories"
+					},
+					"name": "categorySubcategories",
+					"objectDefinitionExternalReferenceCode1": "C2M0_CATEGORY",
+					"objectDefinitionExternalReferenceCode2": "C2M0_CATEGORY",
+					"type": "oneToMany"
+				}
+			],
 			"panelCategoryKey": "",
 			"parameterRequired": false,
 			"pluralLabel": {
@@ -328,6 +363,30 @@
 				}
 			],
 			"objectFolderExternalReferenceCode": "C2M0_FORUMS",
+			"objectRelationships": [
+				{
+					"deletionType": "cascade",
+					"externalReferenceCode": "C2M0_MESSAGE_VOTES",
+					"label": {
+						"en_US": "Message Votes"
+					},
+					"name": "messageVotes",
+					"objectDefinitionExternalReferenceCode1": "C2M0_MESSAGE",
+					"objectDefinitionExternalReferenceCode2": "C2M0_VOTE",
+					"type": "oneToMany"
+				},
+				{
+					"deletionType": "cascade",
+					"externalReferenceCode": "C2M0_MESSAGE_ATTACHMENTS",
+					"label": {
+						"en_US": "Message Attachments"
+					},
+					"name": "messageAttachments",
+					"objectDefinitionExternalReferenceCode1": "C2M0_MESSAGE",
+					"objectDefinitionExternalReferenceCode2": "C2M0_ATTACHMENT",
+					"type": "oneToMany"
+				}
+			],
 			"panelCategoryKey": "",
 			"parameterRequired": false,
 			"pluralLabel": {
@@ -532,6 +591,41 @@
 				}
 			],
 			"objectFolderExternalReferenceCode": "C2M0_FORUMS",
+			"objectRelationships": [
+				{
+					"deletionType": "cascade",
+					"externalReferenceCode": "C2M0_THREAD_MESSAGES",
+					"label": {
+						"en_US": "Thread Messages"
+					},
+					"name": "threadMessages",
+					"objectDefinitionExternalReferenceCode1": "C2M0_THREAD",
+					"objectDefinitionExternalReferenceCode2": "C2M0_MESSAGE",
+					"type": "oneToMany"
+				},
+				{
+					"deletionType": "cascade",
+					"externalReferenceCode": "C2M0_THREAD_SUBSCRIPTIONS",
+					"label": {
+						"en_US": "Thread Subscriptions"
+					},
+					"name": "threadSubscriptions",
+					"objectDefinitionExternalReferenceCode1": "C2M0_THREAD",
+					"objectDefinitionExternalReferenceCode2": "C2M0_SUBSCRIPTION",
+					"type": "oneToMany"
+				},
+				{
+					"deletionType": "cascade",
+					"externalReferenceCode": "C2M0_THREAD_SUSPICIOUS_ACTIVITIES",
+					"label": {
+						"en_US": "Thread Suspicious Activities"
+					},
+					"name": "threadSuspiciousActivities",
+					"objectDefinitionExternalReferenceCode1": "C2M0_THREAD",
+					"objectDefinitionExternalReferenceCode2": "C2M0_SUSPICIOUS_ACTIVITY",
+					"type": "oneToMany"
+				}
+			],
 			"panelCategoryKey": "",
 			"parameterRequired": false,
 			"pluralLabel": {
@@ -685,6 +779,56 @@
 			},
 			"system": false,
 			"titleObjectFieldName": "externalReferenceCode"
+		},
+		{
+			"active": true,
+			"className": "com.liferay.portal.kernel.model.User",
+			"externalReferenceCode": "L_USER",
+			"label": {
+				"en_US": "User"
+			},
+			"name": "User",
+			"objectFolderExternalReferenceCode": "default",
+			"objectRelationships": [
+				{
+					"deletionType": "disassociate",
+					"externalReferenceCode": "L_USER_TO_C2M0_BANS",
+					"label": {
+						"en_US": "L User to C2M0 Bans"
+					},
+					"name": "lUserToC2M0Bans",
+					"objectDefinitionExternalReferenceCode1": "L_USER",
+					"objectDefinitionExternalReferenceCode2": "C2M0_BAN",
+					"type": "oneToMany"
+				},
+				{
+					"deletionType": "disassociate",
+					"externalReferenceCode": "L_USER_TO_C2M0_VOTES",
+					"label": {
+						"en_US": "L User to C2M0 Votes"
+					},
+					"name": "lUserToC2M0Votes",
+					"objectDefinitionExternalReferenceCode1": "L_USER",
+					"objectDefinitionExternalReferenceCode2": "C2M0_VOTE",
+					"type": "oneToMany"
+				},
+				{
+					"deletionType": "cascade",
+					"externalReferenceCode": "L_USER_TO_C2M0_SUBSCRIPTIONS",
+					"label": {
+						"en_US": "L User to C2M0 Subscriptions"
+					},
+					"name": "lUserToC2M0Subscriptions",
+					"objectDefinitionExternalReferenceCode1": "L_USER",
+					"objectDefinitionExternalReferenceCode2": "C2M0_SUBSCRIPTION",
+					"type": "oneToMany"
+				}
+			],
+			"pluralLabel": {
+				"en_US": "Users"
+			},
+			"scope": "company",
+			"system": true
 		}
 	]
 }
