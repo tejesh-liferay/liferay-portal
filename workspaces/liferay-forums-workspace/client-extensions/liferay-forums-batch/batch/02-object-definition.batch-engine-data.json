@@ -102,6 +102,21 @@
 				}
 			],
 			"objectFolderExternalReferenceCode": "C2M0_FORUMS",
+			"objectValidationRules": [
+				{
+					"active": true,
+					"engine": "function#liferay-forums-etc-spring-boot-object-validation-rule-check-already-banned",
+					"errorLabel": {
+						"en_US": "User already banned"
+					},
+					"externalReferenceCode": "C2M0_BAN_CHECK_ALREADY_BANNED_VALIDATION",
+					"name": {
+						"en_US": "Check if already banned"
+					},
+					"outputType": "fullValidation",
+					"script": ""
+				}
+			],
 			"panelCategoryKey": "",
 			"parameterRequired": false,
 			"pluralLabel": {
@@ -238,6 +253,92 @@
 			},
 			"modifiable": true,
 			"name": "C2M0Message",
+			"objectActions": [
+				{
+					"active": true,
+					"externalReferenceCode": "C2M0_MESSAGE_NEW_REPLY_ACTION",
+					"label": {
+						"en_US": "Notify On New Reply"
+					},
+					"name": "c2m0MessageNewReply",
+					"objectActionExecutorKey": "function#liferay-forums-etc-spring-boot-object-action-new-reply",
+					"objectActionTriggerKey": "onAfterAdd",
+					"parameters": {
+					},
+					"system": false
+				},
+				{
+					"active": true,
+					"externalReferenceCode": "C2M0_MESSAGE_RECORD_AUTHOR_ACTION",
+					"label": {
+						"en_US": "Record Author"
+					},
+					"name": "c2m0MessageRecordAuthor",
+					"objectActionExecutorKey": "function#liferay-forums-etc-spring-boot-object-action-record-author",
+					"objectActionTriggerKey": "onAfterAdd",
+					"parameters": {
+					},
+					"system": false
+				},
+				{
+					"active": true,
+					"externalReferenceCode": "C2M0_MESSAGE_UPDATE_THREAD_LAST_POST_DATE_ACTION",
+					"label": {
+						"en_US": "Update Thread Last Post Date"
+					},
+					"name": "c2m0MessageUpdateThreadLastPostDate",
+					"objectActionExecutorKey": "function#liferay-forums-etc-spring-boot-object-action-update-thread-last-post-date",
+					"objectActionTriggerKey": "onAfterAdd",
+					"parameters": {
+					},
+					"system": false
+				},
+				{
+					"active": true,
+					"externalReferenceCode": "C2M0_MESSAGE_UPDATED_REPLY_ACTION",
+					"label": {
+						"en_US": "Notify On Updated Reply"
+					},
+					"name": "c2m0MessageUpdatedReply",
+					"objectActionExecutorKey": "function#liferay-forums-etc-spring-boot-object-action-updated-reply",
+					"objectActionTriggerKey": "onAfterUpdate",
+					"parameters": {
+					},
+					"system": false
+				},
+				{
+					"active": true,
+					"conditionExpression": "notificationReplyRecipientIds != \"\"",
+					"externalReferenceCode": "C2M0_MESSAGE_WEB_REPLY_ACTION",
+					"label": {
+						"en_US": "Notify In App On Reply"
+					},
+					"name": "c2m0MessageWebReply",
+					"objectActionExecutorKey": "notification",
+					"objectActionTriggerKey": "onAfterUpdate",
+					"parameters": {
+						"notificationTemplateExternalReferenceCode": "C2M0_NOTIFICATION_WEB_REPLY",
+						"type": "userNotification"
+					},
+					"system": false
+				},
+				{
+					"active": true,
+					"conditionExpression": "notificationMentionRecipientIds != \"\"",
+					"externalReferenceCode": "C2M0_MESSAGE_WEB_MENTION_ACTION",
+					"label": {
+						"en_US": "Notify In App On Mention"
+					},
+					"name": "c2m0MessageWebMention",
+					"objectActionExecutorKey": "notification",
+					"objectActionTriggerKey": "onAfterUpdate",
+					"parameters": {
+						"notificationTemplateExternalReferenceCode": "C2M0_NOTIFICATION_WEB_MENTION",
+						"type": "userNotification"
+					},
+					"system": false
+				}
+			],
 			"objectFields": [
 				{
 					"DBType": "Boolean",
@@ -366,6 +467,17 @@
 			"objectRelationships": [
 				{
 					"deletionType": "cascade",
+					"externalReferenceCode": "C2M0_MESSAGE_REPLIES",
+					"label": {
+						"en_US": "Message Replies"
+					},
+					"name": "messageReplies",
+					"objectDefinitionExternalReferenceCode1": "C2M0_MESSAGE",
+					"objectDefinitionExternalReferenceCode2": "C2M0_MESSAGE",
+					"type": "oneToMany"
+				},
+				{
+					"deletionType": "cascade",
 					"externalReferenceCode": "C2M0_MESSAGE_VOTES",
 					"label": {
 						"en_US": "Message Votes"
@@ -385,6 +497,34 @@
 					"objectDefinitionExternalReferenceCode1": "C2M0_MESSAGE",
 					"objectDefinitionExternalReferenceCode2": "C2M0_ATTACHMENT",
 					"type": "oneToMany"
+				}
+			],
+			"objectValidationRules": [
+				{
+					"active": true,
+					"engine": "function#liferay-forums-etc-spring-boot-object-validation-rule-ban",
+					"errorLabel": {
+						"en_US": "Your account has been banned from participating in the forums."
+					},
+					"externalReferenceCode": "C2M0_MESSAGE_BAN_VALIDATION",
+					"name": {
+						"en_US": "Ban Enforcement"
+					},
+					"outputType": "fullValidation",
+					"script": ""
+				},
+				{
+					"active": true,
+					"engine": "function#liferay-forums-etc-spring-boot-object-validation-rule-locked",
+					"errorLabel": {
+						"en_US": "This topic is locked. New replies and edits are not allowed."
+					},
+					"externalReferenceCode": "C2M0_MESSAGE_LOCKED_VALIDATION",
+					"name": {
+						"en_US": "Thread Lock Enforcement"
+					},
+					"outputType": "fullValidation",
+					"script": ""
 				}
 			],
 			"panelCategoryKey": "",
@@ -474,6 +614,34 @@
 			},
 			"modifiable": true,
 			"name": "C2M0SuspiciousActivity",
+			"objectActions": [
+				{
+					"active": true,
+					"externalReferenceCode": "C2M0_SUSPICIOUS_ACTIVITY_HANDLE_UPDATE_ACTION",
+					"label": {
+						"en_US": "Handle Suspicious Activity Update"
+					},
+					"name": "c2m0SuspiciousActivityHandleUpdate",
+					"objectActionExecutorKey": "function#liferay-forums-etc-spring-boot-object-action-handle-suspicious-activity-update",
+					"objectActionTriggerKey": "onAfterUpdate",
+					"parameters": {
+					},
+					"system": false
+				},
+				{
+					"active": true,
+					"externalReferenceCode": "C2M0_SUSPICIOUS_ACTIVITY_RECREATE_DELETED_ACTION",
+					"label": {
+						"en_US": "Recreate Deleted Suspicious Activity"
+					},
+					"name": "c2m0SuspiciousActivityRecreateDeleted",
+					"objectActionExecutorKey": "function#liferay-forums-etc-spring-boot-object-action-recreate-deleted-suspicious-activity",
+					"objectActionTriggerKey": "onAfterDelete",
+					"parameters": {
+					},
+					"system": false
+				}
+			],
 			"objectFields": [
 				{
 					"DBType": "Clob",
@@ -534,6 +702,21 @@
 			},
 			"modifiable": true,
 			"name": "C2M0Thread",
+			"objectActions": [
+				{
+					"active": true,
+					"externalReferenceCode": "C2M0_THREAD_RECORD_AUTHOR_ACTION",
+					"label": {
+						"en_US": "Record Author"
+					},
+					"name": "c2m0ThreadRecordAuthor",
+					"objectActionExecutorKey": "function#liferay-forums-etc-spring-boot-object-action-record-author",
+					"objectActionTriggerKey": "onAfterAdd",
+					"parameters": {
+					},
+					"system": false
+				}
+			],
 			"objectFields": [
 				{
 					"DBType": "Date",
@@ -624,6 +807,34 @@
 					"objectDefinitionExternalReferenceCode1": "C2M0_THREAD",
 					"objectDefinitionExternalReferenceCode2": "C2M0_SUSPICIOUS_ACTIVITY",
 					"type": "oneToMany"
+				}
+			],
+			"objectValidationRules": [
+				{
+					"active": true,
+					"engine": "function#liferay-forums-etc-spring-boot-object-validation-rule-ban",
+					"errorLabel": {
+						"en_US": "Your account has been banned from participating in the forums."
+					},
+					"externalReferenceCode": "C2M0_THREAD_BAN_VALIDATION",
+					"name": {
+						"en_US": "Ban Enforcement"
+					},
+					"outputType": "fullValidation",
+					"script": ""
+				},
+				{
+					"active": true,
+					"engine": "function#liferay-forums-etc-spring-boot-object-validation-rule-priority",
+					"errorLabel": {
+						"en_US": "You are not allowed to set the priority of a discussion."
+					},
+					"externalReferenceCode": "C2M0_THREAD_PRIORITY_VALIDATION",
+					"name": {
+						"en_US": "Thread Priority Enforcement"
+					},
+					"outputType": "fullValidation",
+					"script": ""
 				}
 			],
 			"panelCategoryKey": "",
@@ -751,6 +962,34 @@
 			},
 			"modifiable": true,
 			"name": "C2M0Vote",
+			"objectActions": [
+				{
+					"active": true,
+					"externalReferenceCode": "C2M0_VOTE_RECALCULATE_SCORE_ON_ADD_ACTION",
+					"label": {
+						"en_US": "Recalculate Vote Score On Add"
+					},
+					"name": "c2m0VoteRecalculateScoreOnAdd",
+					"objectActionExecutorKey": "function#liferay-forums-etc-spring-boot-object-action-recalculate-vote-score",
+					"objectActionTriggerKey": "onAfterAdd",
+					"parameters": {
+					},
+					"system": false
+				},
+				{
+					"active": true,
+					"externalReferenceCode": "C2M0_VOTE_RECALCULATE_SCORE_ON_DELETE_ACTION",
+					"label": {
+						"en_US": "Recalculate Vote Score On Delete"
+					},
+					"name": "c2m0VoteRecalculateScoreOnDelete",
+					"objectActionExecutorKey": "function#liferay-forums-etc-spring-boot-object-action-recalculate-vote-score",
+					"objectActionTriggerKey": "onAfterDelete",
+					"parameters": {
+					},
+					"system": false
+				}
+			],
 			"objectFields": [
 				{
 					"DBType": "Integer",

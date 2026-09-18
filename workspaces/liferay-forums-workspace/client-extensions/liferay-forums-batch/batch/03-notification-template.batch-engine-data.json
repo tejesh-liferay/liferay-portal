@@ -1,0 +1,120 @@
+{
+	"configuration": {
+		"className": "com.liferay.notification.rest.dto.v1_0.NotificationTemplate",
+		"parameters": {
+			"containsHeaders": "true",
+			"createStrategy": "UPSERT",
+			"onErrorFail": "false",
+			"updateStrategy": "UPDATE"
+		},
+		"taskItemDelegateName": "DEFAULT"
+	},
+	"items": [
+		{
+			"body": {
+				"en_US": "[%C2M0MESSAGE_NOTIFICATIONAUTHORNAME%] posted a new reply to &quot;[%C2M0MESSAGE_NOTIFICATIONTOPICTITLE%]&quot;: [%C2M0MESSAGE_NOTIFICATIONBODY%]"
+			},
+			"editorType": "richText",
+			"externalReferenceCode": "C2M0_NOTIFICATION_WEB_REPLY",
+			"name": "C2M0 Notification Web Reply",
+			"objectDefinitionExternalReferenceCode": "C2M0_MESSAGE",
+			"recipientType": "term",
+			"recipients": [
+				{
+					"term": "[%C2M0MESSAGE_NOTIFICATIONREPLYRECIPIENTIDS%]"
+				}
+			],
+			"subject": {
+				"en_US": "Re: [%C2M0MESSAGE_NOTIFICATIONTOPICTITLE%]"
+			},
+			"system": false,
+			"type": "userNotification",
+			"typeLabel": "User Notification"
+		},
+		{
+			"body": {
+				"en_US": "[%C2M0MESSAGE_NOTIFICATIONAUTHORNAME%] mentioned you in &quot;[%C2M0MESSAGE_NOTIFICATIONTOPICTITLE%]&quot;: [%C2M0MESSAGE_NOTIFICATIONBODY%]"
+			},
+			"editorType": "richText",
+			"externalReferenceCode": "C2M0_NOTIFICATION_WEB_MENTION",
+			"name": "C2M0 Notification Web Mention",
+			"objectDefinitionExternalReferenceCode": "C2M0_MESSAGE",
+			"recipientType": "term",
+			"recipients": [
+				{
+					"term": "[%C2M0MESSAGE_NOTIFICATIONMENTIONRECIPIENTIDS%]"
+				}
+			],
+			"subject": {
+				"en_US": "[%C2M0MESSAGE_NOTIFICATIONAUTHORNAME%] mentioned you in: [%C2M0MESSAGE_NOTIFICATIONTOPICTITLE%]"
+			},
+			"system": false,
+			"type": "userNotification",
+			"typeLabel": "User Notification"
+		},
+		{
+			"body": {
+				"en_US": "<div style=\"color: #272833; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; line-height: 1.5; max-width: 640px;\"><p>Hello,</p><p>[%C2M0NOTIFICATION_AUTHORNAME%] posted a new reply to &quot;[%C2M0NOTIFICATION_TOPICTITLE%]&quot;: [%C2M0NOTIFICATION_BODYEXCERPT%]</p><p><a href=\"[%C2M0NOTIFICATION_NOTIFICATIONURL%]\">View the discussion</a></p><hr style=\"border-bottom-style: none; border-left-style: none; border-right-style: none; border-top: 1px solid #e7e7ed; margin: 24px 0;\" /><p style=\"color: #6b6c7e; font-size: 12px\">You are receiving this email because you subscribed to this forum topic, or because someone mentioned you in it. To unsubscribe, open the topic and click Unsubscribe.</p></div>"
+			},
+			"editorType": "richText",
+			"externalReferenceCode": "C2M0_NOTIFICATION_EMAIL_REPLY",
+			"name": "C2M0 Notification Email Reply",
+			"recipientType": "email",
+			"recipients": [
+				{
+					"bcc": {
+						"en_US": "[%C2M0NOTIFICATION_RECIPIENTEMAILADDRESS%]"
+					},
+					"bccType": "email",
+					"from": "forums-noreply@example.xyz",
+					"fromName": {
+						"en_US": "Community Forums"
+					},
+					"singleRecipient": true,
+					"to": {
+						"en_US": "forums-noreply@example.xyz"
+					},
+					"toType": "email"
+				}
+			],
+			"subject": {
+				"en_US": "Re: [%C2M0NOTIFICATION_TOPICTITLE%]"
+			},
+			"system": false,
+			"type": "email",
+			"typeLabel": "Email"
+		},
+		{
+			"body": {
+				"en_US": "<div style=\"color: #272833; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; line-height: 1.5; max-width: 640px;\"><p>Hello,</p><p>[%C2M0NOTIFICATION_AUTHORNAME%] mentioned you in &quot;[%C2M0NOTIFICATION_TOPICTITLE%]&quot;: [%C2M0NOTIFICATION_BODYEXCERPT%]</p><p><a href=\"[%C2M0NOTIFICATION_NOTIFICATIONURL%]\">View the discussion</a></p><hr style=\"border-bottom-style: none; border-left-style: none; border-right-style: none; border-top: 1px solid #e7e7ed; margin: 24px 0;\" /><p style=\"color: #6b6c7e; font-size: 12px\">You are receiving this email because you subscribed to this forum topic, or because someone mentioned you in it. To unsubscribe, open the topic and click Unsubscribe.</p></div>"
+			},
+			"editorType": "richText",
+			"externalReferenceCode": "C2M0_NOTIFICATION_EMAIL_MENTION",
+			"name": "C2M0 Notification Email Mention",
+			"recipientType": "email",
+			"recipients": [
+				{
+					"bcc": {
+						"en_US": "[%C2M0NOTIFICATION_RECIPIENTEMAILADDRESS%]"
+					},
+					"bccType": "email",
+					"from": "forums-noreply@example.xyz",
+					"fromName": {
+						"en_US": "Community Forums"
+					},
+					"singleRecipient": true,
+					"to": {
+						"en_US": "forums-noreply@example.xyz"
+					},
+					"toType": "email"
+				}
+			],
+			"subject": {
+				"en_US": "[%C2M0NOTIFICATION_AUTHORNAME%] mentioned you in: [%C2M0NOTIFICATION_TOPICTITLE%]"
+			},
+			"system": false,
+			"type": "email",
+			"typeLabel": "Email"
+		}
+	]
+}

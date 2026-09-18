@@ -12,4 +12,5 @@ liferay-forums-batch-oahs:
     scopes:
         -   Liferay.Headless.Batch.Engine.everything
         -   Liferay.Object.Admin.REST.everything
+        -   Liferay.Notification.REST.everything
     type: oAuthApplicationHeadlessServer
