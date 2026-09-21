@@ -102,9 +102,9 @@ if (relatedTopics && !document.body.classList.contains('has-edit-mode-menu')) {
 				items.forEach(
 					({
 						friendlyUrlPath,
-						messageTitle,
 						scopeKey,
 						threadSuspiciousActivities,
+						title: messageTitle,
 					}) => {
 						const title =
 							messageTitle ||

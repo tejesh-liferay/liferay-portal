@@ -839,7 +839,7 @@
 				"label_i18n": "Approved"
 			},
 			"system": false,
-			"titleObjectFieldName": "messageTitle"
+			"titleObjectFieldName": "title"
 		},
 		{
 			"accountEntryRestricted": false,

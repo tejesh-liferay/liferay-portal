@@ -232,16 +232,16 @@ public class ForumNotificationRestController extends BaseRestController {
 		}
 	}
 
-	private String _fetchMessageTitle(long threadId, String authToken) {
+	private String _fetchTitle(long threadId, String authToken) {
 		try {
 			String response = _liferayApiClient.get(
-				"/o/c/c2m0threads/" + threadId + "?fields=messageTitle",
+				"/o/c/c2m0threads/" + threadId + "?fields=title",
 				authToken);
 
 			return new JSONObject(
 				response
 			).optString(
-				"messageTitle", null
+				"title", null
 			);
 		}
 		catch (Exception exception) {
@@ -305,7 +305,7 @@ public class ForumNotificationRestController extends BaseRestController {
 	}
 
 	private List<Long> _notifyMentions(
-		Set<String> mentionedScreenNames, String messageTitle, String author,
+		Set<String> mentionedScreenNames, String title, String author,
 		String bodyPreview, String url, List<Long> alreadyNotified,
 		long authorUserId, long siteId, String authToken) {
 
@@ -333,7 +333,7 @@ public class ForumNotificationRestController extends BaseRestController {
 		}
 
 		_forumNotificationService.notifyAll(
-			recipients, "mention", author, messageTitle,
+			recipients, "mention", author, title,
 			_truncate(bodyPreview, 300), url, authToken);
 
 		return recipients;
@@ -414,16 +414,16 @@ public class ForumNotificationRestController extends BaseRestController {
 			return;
 		}
 
-		String messageTitle = _fetchMessageTitle(threadId, authToken);
+		String title = _fetchTitle(threadId, authToken);
 
-		if (messageTitle == null) {
+		if (title == null) {
 			if (_log.isWarnEnabled()) {
 				_log.warn(
 					"onNewReply: unable to fetch title for threadId=" +
 						threadId);
 			}
 
-			messageTitle = _fallbackTopicTitle;
+			title = _fallbackTopicTitle;
 		}
 
 		if (siteJSONObject == null) {
@@ -438,17 +438,17 @@ public class ForumNotificationRestController extends BaseRestController {
 		}
 
 		_forumNotificationService.notifyAll(
-			recipientUserIds, "reply", replyAuthor, messageTitle,
+			recipientUserIds, "reply", replyAuthor, title,
 			_truncate(replyBody, 300), url, authToken);
 
 		List<Long> mentionRecipientUserIds = _notifyMentions(
-			mentionedScreenNames, messageTitle, replyAuthor, replyBody, url,
+			mentionedScreenNames, title, replyAuthor, replyBody, url,
 			recipientUserIds, authorUserId, siteId, authToken);
 
 		_forumNotificationService.recordWebNotification(
 			_resolveMessageId(dtoJSONObject, payloadJSONObject),
-			recipientUserIds, mentionRecipientUserIds, replyAuthor,
-			messageTitle, _truncate(replyBody, 300), authToken);
+			recipientUserIds, mentionRecipientUserIds, replyAuthor, title,
+			_truncate(replyBody, 300), authToken);
 	}
 
 	private void _processRecordAuthor(String json, String authToken) {
@@ -558,10 +558,10 @@ public class ForumNotificationRestController extends BaseRestController {
 
 		String replyBody = _stripHtml(rawReplyBody);
 
-		String messageTitle = _fetchMessageTitle(threadId, authToken);
+		String title = _fetchTitle(threadId, authToken);
 
-		if (messageTitle == null) {
-			messageTitle = _fallbackTopicTitle;
+		if (title == null) {
+			title = _fallbackTopicTitle;
 		}
 
 		JSONObject siteJSONObject = _fetchSite(
@@ -576,12 +576,12 @@ public class ForumNotificationRestController extends BaseRestController {
 		}
 
 		List<Long> mentionRecipientUserIds = _notifyMentions(
-			addedMentions, messageTitle, replyAuthor, replyBody, url, List.of(),
+			addedMentions, title, replyAuthor, replyBody, url, List.of(),
 			authorUserId, siteId, authToken);
 
 		_forumNotificationService.recordWebNotification(
 			_resolveMessageId(dtoJSONObject, payloadJSONObject), List.of(),
-			mentionRecipientUserIds, replyAuthor, messageTitle,
+			mentionRecipientUserIds, replyAuthor, title,
 			_truncate(replyBody, 300), authToken);
 	}
 

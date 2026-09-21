@@ -652,14 +652,10 @@ if (forumsMod) {
 					} = flag;
 
 					const messageData = threadSuspiciousActivities || {};
-					const {
-						creator: messageCreator,
-						messageTitle: dataTitle,
-						title: dataAltTitle,
-					} = messageData;
+					const {creator: messageCreator, title: dataTitle} =
+						messageData;
 					const messageTitle =
 						dataTitle ||
-						dataAltTitle ||
 						'Thread #' +
 							(r_threadSuspiciousActivities_c_c2m0ThreadId ||
 								'?');

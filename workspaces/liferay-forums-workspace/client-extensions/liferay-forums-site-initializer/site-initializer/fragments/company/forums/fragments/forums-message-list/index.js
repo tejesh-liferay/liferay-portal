@@ -1025,11 +1025,11 @@ if (messageList) {
 							friendlyUrlPath,
 							keywords,
 							locked,
-							messageTitle,
 							priority,
 							question,
 							threadMessages,
 							threadSuspiciousActivities,
+							title: messageTitle,
 						} = msg;
 
 						const title =

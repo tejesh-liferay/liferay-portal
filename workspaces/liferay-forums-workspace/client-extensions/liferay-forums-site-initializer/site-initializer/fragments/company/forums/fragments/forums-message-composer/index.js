@@ -1254,13 +1254,13 @@ if (messageComposer) {
 				if (editIsOp) {
 					const threadPatchPayload = {
 						keywords: tagsArray,
-						messageTitle: subject,
-						messageTitle_i18n: {[defaultLanguageId]: subject},
 						question: isQuestion,
 						r_categoryThreads_c_c2m0CategoryId: parseInt(
 							selectedCategory,
 							10
 						),
+						title: subject,
+						title_i18n: {[defaultLanguageId]: subject},
 					};
 
 					/* Only privileged users may change the priority; omitting the
@@ -1448,8 +1448,6 @@ if (messageComposer) {
 
 				const messagePayload = {
 					keywords: tagsArray,
-					messageTitle: subject,
-					messageTitle_i18n: {[defaultLanguageId]: subject},
 					priority:
 						canSetPriority && prioritySelect
 							? parseFloat(prioritySelect.value) || 0
@@ -1459,6 +1457,8 @@ if (messageComposer) {
 						selectedCategory,
 						10
 					),
+					title: subject,
+					title_i18n: {[defaultLanguageId]: subject},
 				};
 
 				Liferay.Util.fetch(

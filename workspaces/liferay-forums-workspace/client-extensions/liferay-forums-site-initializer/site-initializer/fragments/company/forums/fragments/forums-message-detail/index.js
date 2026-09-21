@@ -1575,11 +1575,11 @@ if (messageDetail) {
 						externalReferenceCode,
 						keywords,
 						locked,
-						messageTitle,
 						priority,
 						question,
 						r_categoryThreads_c_c2m0CategoryId,
 						threadSuspiciousActivities,
+						title: messageTitle,
 					} = msg;
 
 					isThreadLocked = !!locked;
