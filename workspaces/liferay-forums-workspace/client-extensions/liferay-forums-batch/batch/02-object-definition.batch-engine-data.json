@@ -804,6 +804,17 @@
 					"objectDefinitionExternalReferenceCode1": "L_USER",
 					"objectDefinitionExternalReferenceCode2": "C2M0_SUBSCRIPTION",
 					"type": "oneToMany"
+				},
+				{
+					"deletionType": "cascade",
+					"externalReferenceCode": "L_USER_TO_C2M0_USERS",
+					"label": {
+						"en_US": "L User to C2M0 Users"
+					},
+					"name": "lUserToC2M0Users",
+					"objectDefinitionExternalReferenceCode1": "L_USER",
+					"objectDefinitionExternalReferenceCode2": "C2M0_USER",
+					"type": "oneToMany"
 				}
 			],
 			"pluralLabel": {
