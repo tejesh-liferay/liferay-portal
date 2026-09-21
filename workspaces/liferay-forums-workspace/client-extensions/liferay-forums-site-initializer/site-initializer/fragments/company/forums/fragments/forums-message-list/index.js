@@ -22,26 +22,29 @@ function categoryQuery(dataset) {
 
 if (messageList) {
 	const portalURL = Liferay.ThemeDisplay.getPortalURL();
-    const scopeGroupId = Liferay.ThemeDisplay.getScopeGroupId();
-    const pathFriendlyURLPublic = Liferay.ThemeDisplay.getPathFriendlyURLPublic();
-    let sitePrefix = '';
+	const scopeGroupId = Liferay.ThemeDisplay.getScopeGroupId();
+	const pathFriendlyURLPublic =
+		Liferay.ThemeDisplay.getPathFriendlyURLPublic();
+	let sitePrefix = '';
 
-    if (pathFriendlyURLPublic) {
-    	const pubPath = pathFriendlyURLPublic + '/';
+	if (pathFriendlyURLPublic) {
+		const pubPath = pathFriendlyURLPublic + '/';
 
-    	const {pathname} = window.location;
-    	const localeMatch = pathname.match(/^\/[a-zA-Z]{2}(?:-[a-zA-Z]{2})?(?=\/)/);
-    	const localePrefix = localeMatch ? localeMatch[0] : '';
-    	const pathAfterLocale = pathname.substring(localePrefix.length);
+		const {pathname} = window.location;
+		const localeMatch = pathname.match(
+			/^\/[a-zA-Z]{2}(?:-[a-zA-Z]{2})?(?=\/)/
+		);
+		const localePrefix = localeMatch ? localeMatch[0] : '';
+		const pathAfterLocale = pathname.substring(localePrefix.length);
 
-    	if (pathAfterLocale.indexOf(pubPath) === 0) {
-    		const rest = pathAfterLocale.substring(pubPath.length);
-    		const slugEnd = rest.indexOf('/');
-    		const siteSlug = slugEnd === -1 ? rest : rest.substring(0, slugEnd);
+		if (pathAfterLocale.indexOf(pubPath) === 0) {
+			const rest = pathAfterLocale.substring(pubPath.length);
+			const slugEnd = rest.indexOf('/');
+			const siteSlug = slugEnd === -1 ? rest : rest.substring(0, slugEnd);
 
-    		sitePrefix = pathFriendlyURLPublic + '/' + siteSlug;
-    	}
-    }
+			sitePrefix = pathFriendlyURLPublic + '/' + siteSlug;
+		}
+	}
 	const headers = {
 		'Accept': 'application/json',
 		'Content-Type': 'application/json',
@@ -162,9 +165,7 @@ if (messageList) {
 			});
 	};
 	messageList.addEventListener('click', (event) => {
-		const toggle = event.target.closest(
-			'[id^="forumsListOptions_"]'
-		);
+		const toggle = event.target.closest('[id^="forumsListOptions_"]');
 		if (!toggle) {
 			return;
 		}
@@ -513,9 +514,7 @@ if (messageList) {
 		const {byId} = tree;
 		const current = categoryId ? byId[categoryId] : null;
 		const name = current
-			? current.name ||
-				messageList.dataset.labelCategory ||
-				'Category'
+			? current.name || messageList.dataset.labelCategory || 'Category'
 			: allLabel;
 
 		breadcrumbName.textContent = name;
@@ -563,7 +562,7 @@ if (messageList) {
 		});
 	};
 
-	const categoryOption = function ({name, id}, depth) {
+	const categoryOption = function ({id, name}, depth) {
 		const opt = document.createElement('option');
 		opt.value = id;
 		opt.textContent = (depth > 0 ? '— ' : '') + (name || '');
@@ -669,7 +668,7 @@ if (messageList) {
 			return;
 		}
 
-		children.forEach(({description: categoryDesc, name, id}) => {
+		children.forEach(({description: categoryDesc, id, name}) => {
 			const col = document.createElement('div');
 			col.className = 'col-sm-6 col-lg-3 mb-4';
 
@@ -840,6 +839,7 @@ if (messageList) {
 
 		if (loadingEl) {
 			loadingEl.classList.remove('forums-skeleton--fade-out');
+
 			// XSS: skeletonHTML is escaped by construction, captured from this
 			// fragment's own markup
 
@@ -1096,7 +1096,9 @@ if (messageList) {
 								'<span class="sticker sticker-circle sticker-lg ' +
 								avatarColorClass(creator) +
 								'"><span class="sticker-overlay">' +
-								Liferay.Util.escapeHTML(avatarInitial(creatorName)) +
+								Liferay.Util.escapeHTML(
+									avatarInitial(creatorName)
+								) +
 								'</span></span>';
 						}
 
@@ -1241,8 +1243,8 @@ if (messageList) {
 
 								return optionsMenuHtml
 									? '<div class="autofit-col forums-message-card__options-col">' +
-										optionsMenuHtml +
-										'</div>'
+											optionsMenuHtml +
+											'</div>'
 									: '';
 							})() +
 							'</div>' +
@@ -1595,8 +1597,7 @@ if (messageList) {
 
 					if (newLocked) {
 						showDeleteModal(
-							messageList.dataset.labelLockTopic ||
-								'Lock Topic',
+							messageList.dataset.labelLockTopic || 'Lock Topic',
 							messageList.dataset.labelConfirmLockTopic ||
 								'Locking a topic prevents anyone from replying to it or editing its messages until it is unlocked.',
 							doToggle,
@@ -1663,9 +1664,7 @@ if (messageList) {
 				'/o/c/c2m0bans/scopes/' +
 				scopeGroupId +
 				'?filter=' +
-				encodeURIComponent(
-					"bannedUserId eq '" + currentUserId + "'"
-				) +
+				encodeURIComponent("bannedUserId eq '" + currentUserId + "'") +
 				'&pageSize=1',
 			{
 				headers,

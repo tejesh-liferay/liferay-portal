@@ -35,13 +35,10 @@ if (relatedTopics && !document.body.classList.contains('has-edit-mode-menu')) {
 		}
 
 		/* First, get the current message to find its category */
-		Liferay.Util.fetch(
-			portalURL + '/o/c/c2m0threads/' + currentMessageId,
-			{
-				headers,
-				method: 'GET',
-			}
-		)
+		Liferay.Util.fetch(portalURL + '/o/c/c2m0threads/' + currentMessageId, {
+			headers,
+			method: 'GET',
+		})
 			.then((r) => {
 				return r.json();
 			})

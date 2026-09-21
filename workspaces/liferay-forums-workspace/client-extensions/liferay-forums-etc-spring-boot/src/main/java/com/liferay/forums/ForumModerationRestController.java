@@ -150,7 +150,7 @@ public class ForumModerationRestController extends BaseRestController {
 		}
 
 		long entryId = objectEntryJSONObject.optLong("id", 0L);
-		long siteId = _resolveSiteId(objectEntryJSONObject, authToken);
+		long siteId = _resolveSiteId(objectEntryJSONObject);
 
 		if ((actorUserId == _resolveCreatorUserId(objectEntryJSONObject)) &&
 			!_forumModerationService.canManageForumSuspiciousActivity(
@@ -205,7 +205,7 @@ public class ForumModerationRestController extends BaseRestController {
 		}
 
 		long entryId = payloadJSONObject.optLong("classPK", 0L);
-		long siteId = _resolveSiteId(objectEntryJSONObject, authToken);
+		long siteId = _resolveSiteId(objectEntryJSONObject);
 
 		boolean canManage =
 			_forumModerationService.canManageForumSuspiciousActivity(
@@ -257,12 +257,12 @@ public class ForumModerationRestController extends BaseRestController {
 		return 0L;
 	}
 
-	private long _resolveSiteId(
-		JSONObject objectEntryJSONObject, String authToken) {
+	private long _resolveSiteId(JSONObject objectEntryJSONObject) {
+		if (objectEntryJSONObject != null) {
+			return objectEntryJSONObject.optLong("groupId", 0L);
+		}
 
-        return (objectEntryJSONObject != null) ?
-            objectEntryJSONObject.optLong("groupId", 0L) : 0L;
-
+		return 0L;
 	}
 
 	private void _revertSelfEdit(

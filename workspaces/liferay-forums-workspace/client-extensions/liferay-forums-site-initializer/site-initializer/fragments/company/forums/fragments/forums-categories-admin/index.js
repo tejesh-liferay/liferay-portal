@@ -178,7 +178,7 @@ if (forumsCategoriesAdmin) {
 		topOption.textContent = topLevelLabel;
 		selectEl.appendChild(topOption);
 
-		(childrenOf[0] || []).forEach(({name, id}) => {
+		(childrenOf[0] || []).forEach(({id, name}) => {
 			if (excludeIds.indexOf(id) !== -1) {
 				return;
 			}
@@ -186,9 +186,7 @@ if (forumsCategoriesAdmin) {
 			const opt = document.createElement('option');
 			opt.value = id;
 			opt.textContent =
-				name ||
-				forumsCategoriesAdmin.dataset.labelUnnamed ||
-				'Unnamed';
+				name || forumsCategoriesAdmin.dataset.labelUnnamed || 'Unnamed';
 			if (String(id) === String(selectedId)) {
 				opt.selected = true;
 			}
@@ -308,7 +306,7 @@ if (forumsCategoriesAdmin) {
 
 	/* Build a single list row (with inline edit form) for one category */
 	const renderCategoryItem = function (cat, depth, tree) {
-		const {actions, description, name, id} = cat;
+		const {actions, description, id, name} = cat;
 		const {childrenOf} = tree;
 
 		const li = document.createElement('li');
@@ -327,9 +325,7 @@ if (forumsCategoriesAdmin) {
 		const nameSpan = document.createElement('span');
 		nameSpan.className = 'font-weight-bold';
 		nameSpan.textContent =
-			name ||
-			forumsCategoriesAdmin.dataset.labelUnnamed ||
-			'Unnamed';
+			name || forumsCategoriesAdmin.dataset.labelUnnamed || 'Unnamed';
 
 		const descSpan = document.createElement('span');
 		descSpan.className = 'text-secondary small';
@@ -361,6 +357,7 @@ if (forumsCategoriesAdmin) {
 			editBtn.ariaLabel =
 				forumsCategoriesAdmin.dataset.labelEdit || 'Edit';
 			editBtn.setAttribute('data-tooltip-align', 'top');
+
 			// XSS: clayIconsUrl is escaped by construction, from Liferay.ThemeDisplay
 
 			editBtn.innerHTML =
@@ -379,6 +376,7 @@ if (forumsCategoriesAdmin) {
 			delBtn.ariaLabel =
 				forumsCategoriesAdmin.dataset.labelDelete || 'Delete';
 			delBtn.setAttribute('data-tooltip-align', 'top');
+
 			// XSS: clayIconsUrl is escaped by construction, from Liferay.ThemeDisplay
 
 			delBtn.innerHTML =
@@ -576,7 +574,7 @@ if (forumsCategoriesAdmin) {
 	const createCategory = function (name, description, erc, parentId) {
 		const body = {
 			description: description || '',
-			name: name,
+			name,
 			name_i18n: {[defaultLanguageId]: name},
 		};
 		if (erc) {
@@ -613,7 +611,7 @@ if (forumsCategoriesAdmin) {
 
 		const body = {
 			description: description || '',
-			name: name,
+			name,
 			name_i18n: {[defaultLanguageId]: name},
 		};
 

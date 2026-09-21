@@ -231,6 +231,7 @@ if (messageComposer) {
 			chip.className =
 				'label label-secondary label-dismissible forums-message-composer__pending-file';
 			const removeLabel = messageComposer.dataset.labelRemove || 'Remove';
+
 			// XSS: the file name and the remove label are escaped by
 			// Liferay.Util.escapeHTML below, and the index is an integer
 
@@ -286,6 +287,7 @@ if (messageComposer) {
 					removeLabel +
 					'">×</button></span>';
 			}
+
 			// XSS: inner is escaped by Liferay.Util.escapeHTML where it is built
 
 			chip.innerHTML = inner;
@@ -527,9 +529,7 @@ if (messageComposer) {
 				'/o/c/c2m0bans/scopes/' +
 				scopeGroupId +
 				'?filter=' +
-				encodeURIComponent(
-					"bannedUserId eq '" + currentUserId + "'"
-				) +
+				encodeURIComponent("bannedUserId eq '" + currentUserId + "'") +
 				'&pageSize=1',
 			{
 				headers,
@@ -1200,7 +1200,10 @@ if (messageComposer) {
 			const body = getEditorData();
 
 			/* Strip HTML to check if it's completely empty */
-			const parsedBody = new DOMParser().parseFromString(body, 'text/html');
+			const parsedBody = new DOMParser().parseFromString(
+				body,
+				'text/html'
+			);
 			const textContent = parsedBody.body.textContent || '';
 
 			if (!textContent.trim()) {
@@ -1810,6 +1813,7 @@ if (messageComposer) {
 					'</span>' +
 					'</button>';
 			});
+
 			// XSS: html is escaped by Liferay.Util.escapeHTML where it is built
 
 			dropdown.innerHTML = html;

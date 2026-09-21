@@ -36,7 +36,8 @@ if (forumsMod) {
 	const paginationNav = forumsMod.querySelector('#forumsModPagination');
 	const paginationUl = forumsMod.querySelector('#forumsModPaginationUl');
 
-	let currentFilter = 'pending'; /* 'pending' | 'validated' | 'all' | 'bans' */
+	let currentFilter =
+		'pending'; /* 'pending' | 'validated' | 'all' | 'bans' */
 	let currentPage = 1;
 	const pageSize = 20;
 
@@ -238,12 +239,11 @@ if (forumsMod) {
 	   {"detail": "[{\"errorMessage\":\"User already banned\"}]", ...} */
 	const parseValidationErrorMessage = function (problemDetailJSONObject) {
 		try {
-			const detailJSONArray = JSON.parse(
-				problemDetailJSONObject.detail
-			);
-			const messages = (Array.isArray(detailJSONArray)
-				? detailJSONArray
-				: [detailJSONArray]
+			const detailJSONArray = JSON.parse(problemDetailJSONObject.detail);
+			const messages = (
+				Array.isArray(detailJSONArray)
+					? detailJSONArray
+					: [detailJSONArray]
 			)
 				.map((entry) => entry && entry.errorMessage)
 				.filter(Boolean);
@@ -579,7 +579,6 @@ if (forumsMod) {
 			pageSize +
 			buildFilterParam();
 
-
 		const bannedUserIdsPromise = Liferay.Util.fetch(
 			portalURL +
 				'/o/c/c2m0bans/scopes/' +
@@ -592,9 +591,7 @@ if (forumsMod) {
 			})
 			.then((banData) => {
 				return new Set(
-					(banData.items || []).map((ban) =>
-						String(ban.bannedUserId)
-					)
+					(banData.items || []).map((ban) => String(ban.bannedUserId))
 				);
 			})
 			.catch(() => new Set());
@@ -859,8 +856,7 @@ if (forumsMod) {
 									}
 
 									const message =
-										forumsMod.dataset
-											.labelConfirmBanUser ||
+										forumsMod.dataset.labelConfirmBanUser ||
 										'Are you sure you want to ban this user?';
 									showConfirmModal(
 										message,
@@ -898,22 +894,34 @@ if (forumsMod) {
 																.labelUserBanned ||
 																'User has been banned.'
 														);
+
 														return;
 													}
+
 													return r
-															.json()
-															.catch(() => null)
-															.then((problemDetailJSONObject) => {
+														.json()
+														.catch(() => null)
+														.then(
+															(
+																problemDetailJSONObject
+															) => {
 																const message =
 																	(problemDetailJSONObject &&
 																		parseValidationErrorMessage(
 																			problemDetailJSONObject
 																		)) ||
-																	forumsMod.dataset.labelBanFailed ||
+																	forumsMod
+																		.dataset
+																		.labelBanFailed ||
 																	'Unable to ban user.';
 
-																showErrorToast(message);
-																console.error('Ban failed:', message);
+																showErrorToast(
+																	message
+																);
+																console.error(
+																	'Ban failed:',
+																	message
+																);
 
 																if (
 																	problemDetailJSONObject &&
@@ -929,7 +937,8 @@ if (forumsMod) {
 																else {
 																	banBtn.disabled = false;
 																}
-															});
+															}
+														);
 												})
 												.catch((event) => {
 													banBtn.disabled = false;
@@ -1027,7 +1036,10 @@ if (forumsMod) {
 					   the ForumThread's own HATEOAS delete action rather
 					   than the flag's — moderation permission over flags
 					   doesn't imply delete permission over threads. */
-					if (isValidated && r_threadSuspiciousActivities_c_c2m0ThreadId) {
+					if (
+						isValidated &&
+						r_threadSuspiciousActivities_c_c2m0ThreadId
+					) {
 						const threadId =
 							r_threadSuspiciousActivities_c_c2m0ThreadId;
 
@@ -1042,15 +1054,15 @@ if (forumsMod) {
 								const threadActions =
 									threadData && threadData.actions;
 
-								if (!(threadActions && threadActions['delete'])) {
+								if (
+									!(threadActions && threadActions['delete'])
+								) {
 									return;
 								}
 
 								const deleteThreadHref =
 									threadActions['delete'].href ||
-									portalURL +
-										'/o/c/c2m0threads/' +
-										threadId;
+									portalURL + '/o/c/c2m0threads/' + threadId;
 
 								const deleteThreadBtn =
 									document.createElement('button');
@@ -1072,8 +1084,7 @@ if (forumsMod) {
 												.labelDeleteThread ||
 												'Delete Thread',
 											() => {
-												deleteThreadBtn.disabled =
-													true;
+												deleteThreadBtn.disabled = true;
 												Liferay.Util.fetch(
 													deleteThreadHref,
 													{

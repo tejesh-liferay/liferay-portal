@@ -892,10 +892,7 @@ if (messageDetail) {
 			   keeps the response small. Relationship fields compare as
 			   strings, so quote each id. */
 			const messageIdFilter = messageIds
-				.map(
-					(id) =>
-						"r_messageVotes_c_c2m0MessageId eq '" + id + "'"
-				)
+				.map((id) => "r_messageVotes_c_c2m0MessageId eq '" + id + "'")
 				.join(' or ');
 			const filterParam = encodeURIComponent(
 				'creatorId eq ' +
@@ -974,13 +971,10 @@ if (messageDetail) {
 				if (existingValue === voteValue) {
 
 					/* Same direction: remove the vote (toggle off) */
-					Liferay.Util.fetch(
-						portalURL + '/o/c/c2m0votes/' + voteId,
-						{
-							headers,
-							method: 'DELETE',
-						}
-					)
+					Liferay.Util.fetch(portalURL + '/o/c/c2m0votes/' + voteId, {
+						headers,
+						method: 'DELETE',
+					})
 						.then(() => {
 							delete userVoteMap[messageId];
 							updateVoteScore(messageId, -voteValue);
@@ -992,13 +986,10 @@ if (messageDetail) {
 				else {
 
 					/* Opposite direction: delete old, create new */
-					Liferay.Util.fetch(
-						portalURL + '/o/c/c2m0votes/' + voteId,
-						{
-							headers,
-							method: 'DELETE',
-						}
-					)
+					Liferay.Util.fetch(portalURL + '/o/c/c2m0votes/' + voteId, {
+						headers,
+						method: 'DELETE',
+					})
 						.then(() => {
 							return createVote(messageId, voteValue);
 						})
@@ -1030,10 +1021,7 @@ if (messageDetail) {
 				portalURL + '/o/c/c2m0votes/scopes/' + scopeGroupId,
 				{
 					body: JSON.stringify({
-						r_lUserToC2M0Votes_userId: parseInt(
-							currentUserId,
-							10
-						),
+						r_lUserToC2M0Votes_userId: parseInt(currentUserId, 10),
 						r_messageVotes_c_c2m0MessageId: messageId,
 						value: voteValue,
 					}),
@@ -1759,7 +1747,10 @@ if (messageDetail) {
 																	.labelUnsubscribedToast ||
 																'You have been unsubscribed from this message.';
 													Liferay.Util.openToast({
-														message: Liferay.Util.escapeHTML(toastMsg),
+														message:
+															Liferay.Util.escapeHTML(
+																toastMsg
+															),
 														title: Liferay.Util.escapeHTML(
 															messageDetail
 																.dataset
@@ -1825,9 +1816,7 @@ if (messageDetail) {
 								button.style.pointerEvents = 'none';
 
 								Liferay.Util.fetch(
-									portalURL +
-										'/o/c/c2m0threads/' +
-										messageId,
+									portalURL + '/o/c/c2m0threads/' + messageId,
 									{
 										body: JSON.stringify({
 											locked: newLocked,
@@ -1838,18 +1827,15 @@ if (messageDetail) {
 								)
 									.then((r) => {
 										if (!r.ok) {
-											throw new Error(
-												'HTTP ' + r.status
-											);
+											throw new Error('HTTP ' + r.status);
 										}
 
 										isThreadLocked = newLocked;
 										renderLockLabel(button);
 										updateLockedBanner();
 
-										const optionsMenu = button.closest(
-											'.dropdown-menu'
-										);
+										const optionsMenu =
+											button.closest('.dropdown-menu');
 										if (optionsMenu) {
 											optionsMenu.classList.remove(
 												'show'
@@ -1965,6 +1951,7 @@ if (messageDetail) {
 						const priorityBadgeHtml =
 							priorityBadge(messagePriority);
 						if (priorityBadgeHtml) {
+
 							// XSS: priorityBadgeHtml is escaped by Liferay.Util.escapeHTML in
 							// priorityBadge
 
@@ -2088,7 +2075,8 @@ if (messageDetail) {
 						loadingEl.innerHTML =
 							'<div class="forums-message-list__empty text-secondary text-center py-5">' +
 							Liferay.Util.escapeHTML(
-								messageDetail.dataset.labelUnableToLoadMessage ||
+								messageDetail.dataset
+									.labelUnableToLoadMessage ||
 									'Unable to load message.'
 							) +
 							'</div>';
@@ -2114,9 +2102,7 @@ if (messageDetail) {
 					scopeGroupId +
 					'?filter=' +
 					encodeURIComponent(
-						"r_threadMessages_c_c2m0ThreadId eq '" +
-							messageId +
-							"'"
+						"r_threadMessages_c_c2m0ThreadId eq '" + messageId + "'"
 					) +
 					'&sort=dateCreated:asc&page=' +
 					currentReplyPage +
@@ -2228,6 +2214,7 @@ if (messageDetail) {
 								formatMarkupCodeBlocks(opBody);
 							}
 							if (opAttachments) {
+
 								// XSS: renderAttachments escapes each name with Liferay.Util.escapeHTML
 
 								opAttachments.innerHTML =
@@ -2280,6 +2267,7 @@ if (messageDetail) {
 										return `<span class="label label-lg forums-message-detail__tag"><span class="label-item label-item-expand">${Liferay.Util.escapeHTML(tag)}</span></span>`;
 									})
 									.join('');
+
 								// XSS: tagsHtml is escaped by Liferay.Util.escapeHTML where it is built
 
 								opTags.innerHTML = tagsHtml;
@@ -2604,6 +2592,7 @@ if (messageDetail) {
 								solHtml += renderReplyCard(sol, true, 0);
 							});
 							if (solutionCards) {
+
 								// XSS: solHtml is sanitized by sanitizeHTML and escaped by
 								// Liferay.Util.escapeHTML in renderReplyCard
 
@@ -2642,6 +2631,7 @@ if (messageDetail) {
 								opId
 							);
 							if (replyCards) {
+
 								// XSS: repHtml is sanitized by sanitizeHTML and escaped by
 								// Liferay.Util.escapeHTML in renderReplyCard
 
@@ -2753,7 +2743,8 @@ if (messageDetail) {
 						loadingEl.innerHTML =
 							'<div class="forums-message-list__empty text-secondary text-center py-5">' +
 							Liferay.Util.escapeHTML(
-								messageDetail.dataset.labelUnableToLoadMessages ||
+								messageDetail.dataset
+									.labelUnableToLoadMessages ||
 									'Unable to load messages.'
 							) +
 							'</div>';
@@ -3076,8 +3067,7 @@ if (messageDetail) {
 						!isBanned &&
 						!!(
 							threadActions &&
-							(threadActions['post'] ||
-								threadActions['create'])
+							(threadActions['post'] || threadActions['create'])
 						);
 
 					initMessageDetail();
