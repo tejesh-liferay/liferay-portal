@@ -564,7 +564,8 @@ public class ForumNotificationRestController extends BaseRestController {
 			messageTitle = _fallbackTopicTitle;
 		}
 
-		JSONObject siteJSONObject = _fetchSite(objectEntryJSONObject, authToken);
+		JSONObject siteJSONObject = _fetchSite(
+			objectEntryJSONObject, authToken);
 
 		String url = _constructDisplayPageUrl(
 			payloadJSONObject, dtoJSONObject, siteJSONObject, authToken);
@@ -641,13 +642,14 @@ public class ForumNotificationRestController extends BaseRestController {
 	private long _resolveSiteId(
 		JSONObject dtoJSONObject, JSONObject siteJSONObject) {
 
-		if(dtoJSONObject != null && dtoJSONObject.has("groupId")){
+		if ((dtoJSONObject != null) && dtoJSONObject.has("groupId")) {
 			long scopeId = dtoJSONObject.optLong("groupId", 0L);
 
 			if (scopeId > 0L) {
 				return scopeId;
 			}
 		}
+
 		if (dtoJSONObject != null) {
 			JSONObject systemPropertiesJSONObject = dtoJSONObject.optJSONObject(
 				"systemProperties");

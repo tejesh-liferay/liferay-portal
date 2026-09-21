@@ -129,6 +129,8 @@ public class ForumUserService {
 		).put(
 			"portalUserId", forumUserId
 		).put(
+			"r_lUserToC2M0Users_userId", forumUserId
+		).put(
 			"screenName", screenName
 		);
 
