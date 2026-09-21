@@ -553,7 +553,16 @@
 			"modifiable": true,
 			"name": "C2M0Subscription",
 			"objectFields": [
-
+				{
+					"DBType": "Long",
+					"businessType": "LongInteger",
+					"externalReferenceCode": "SUBSCRIBER_USER_ID",
+					"label": {
+						"en_US": "Subscriber User ID"
+					},
+					"name": "subscriberUserId",
+					"required": true
+				}
 			],
 			"objectFolderExternalReferenceCode": "C2M0_FORUMS",
 			"panelCategoryKey": "",
