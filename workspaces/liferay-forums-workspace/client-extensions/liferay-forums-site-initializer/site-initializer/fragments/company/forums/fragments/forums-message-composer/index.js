@@ -1838,7 +1838,7 @@ if (messageComposer) {
 				portalURL +
 				'/o/c/c2m0users/scopes/' +
 				scopeGroupId +
-				'?fields=firstName,lastName,screenName,portalUserId' +
+				'?fields=firstName,lastName,screenName,r_lUserToC2M0Users_userId' +
 				'&pageSize=' +
 				(MENTION_MAX + 1) +
 				'&filter=' +
@@ -1860,7 +1860,10 @@ if (messageComposer) {
 					   object does not, so do it here. */
 					currentItems = (data.items || [])
 						.filter((u) => {
-							return String(u.portalUserId) !== currentUserId;
+							return (
+							String(u.r_lUserToC2M0Users_userId) !==
+							currentUserId
+						);
 						})
 						.map((u) => {
 							return {

@@ -1047,7 +1047,8 @@
 					"name": "lUserToC2M0Users",
 					"objectDefinitionExternalReferenceCode1": "L_USER",
 					"objectDefinitionExternalReferenceCode2": "C2M0_USER",
-					"type": "oneToMany",
+					"type": "oneToMany"
+				}
 			],
 			"pluralLabel": {
 				"en_US": "Users"

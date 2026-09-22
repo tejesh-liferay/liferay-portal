@@ -514,7 +514,8 @@ if (forumsMod) {
 							scopeGroupId +
 							'?fields=firstName,lastName,screenName&pageSize=1&filter=' +
 							encodeURIComponent(
-								'portalUserId eq ' + bannedUserId
+								'r_lUserToC2M0Users_userId eq ' +
+									bannedUserId
 							),
 						{headers, method: 'GET'}
 					)
