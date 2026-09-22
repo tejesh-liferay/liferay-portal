@@ -428,6 +428,21 @@ public class ObjectEntryServiceImpl extends ObjectEntryServiceBaseImpl {
 	}
 
 	@Override
+	public List<Long> getObjectEntrySubscriberUserIds(long objectEntryId)
+		throws PortalException {
+
+		ObjectEntry objectEntry = objectEntryPersistence.findByPrimaryKey(
+			objectEntryId);
+
+		checkModelResourcePermission(
+			objectEntry.getObjectDefinitionId(), objectEntry.getObjectEntryId(),
+			ActionKeys.SUBSCRIBE);
+
+		return objectEntryLocalService.getObjectEntrySubscriberUserIds(
+			objectEntryId);
+	}
+
+	@Override
 	public List<ObjectEntry> getOneToManyObjectEntries(
 			long groupId, long objectRelationshipId, Predicate predicate,
 			boolean preferApproved, long primaryKey, boolean related,

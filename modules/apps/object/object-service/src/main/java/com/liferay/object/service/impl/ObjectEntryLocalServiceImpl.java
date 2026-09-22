@@ -272,6 +272,7 @@ import com.liferay.portal.service.PersistedModelLocalServiceRegistryUtil;
 import com.liferay.portal.vulcan.dto.converter.DTOConverterRegistry;
 import com.liferay.portal.vulcan.util.LocalizedMapUtil;
 import com.liferay.sharing.service.SharingEntryLocalService;
+import com.liferay.subscription.model.Subscription;
 import com.liferay.subscription.service.SubscriptionLocalService;
 import com.liferay.trash.exception.RestoreEntryException;
 import com.liferay.trash.exception.TrashEntryException;
@@ -1493,6 +1494,20 @@ public class ObjectEntryLocalServiceImpl
 
 		return objectEntryPersistence.countByG_OEFI(
 			groupId, objectEntryFolderId);
+	}
+
+	@Override
+	public List<Long> getObjectEntrySubscriberUserIds(long objectEntryId)
+		throws PortalException {
+
+		ObjectEntry objectEntry = objectEntryPersistence.findByPrimaryKey(
+			objectEntryId);
+
+		return TransformUtil.transform(
+			_subscriptionLocalService.getSubscriptions(
+				objectEntry.getCompanyId(), objectEntry.getModelClassName(),
+				objectEntryId),
+			Subscription::getUserId);
 	}
 
 	@Override
