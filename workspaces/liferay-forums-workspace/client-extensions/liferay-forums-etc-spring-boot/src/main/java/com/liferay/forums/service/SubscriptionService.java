@@ -8,10 +8,6 @@ package com.liferay.forums.service;
 import com.liferay.forums.client.LiferayApiClient;
 import com.liferay.petra.string.StringBundler;
 
-import java.net.URLEncoder;
-
-import java.nio.charset.StandardCharsets;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -46,14 +42,6 @@ public class SubscriptionService {
 			return userIds;
 		}
 
-		// Relationship fields must be filtered by the related entry's ERC,
-		// not its numeric ID, or the OData parser throws "Incompatible
-		// types."
-
-		String filter = _encodeFilter(
-			StringBundler.concat(
-				"r_threadSubscriptions_c_c2m0ThreadERC eq '", threadERC, "'"));
-
 		int page = 1;
 
 		while (true) {
@@ -62,16 +50,16 @@ public class SubscriptionService {
 			try {
 				response = _liferayApiClient.get(
 					StringBundler.concat(
-						"/o/c/c2m0subscriptions/scopes/", siteId,
-						"?fields=subscriberUserId&pageSize=", _PAGE_SIZE,
-						"&page=", page, "&filter=", filter),
+						"/o/c/c2m0threads/scopes/", siteId,
+						"/by-external-reference-code/", threadERC,
+						"/subscribers?pageSize=", _PAGE_SIZE, "&page=", page),
 					authToken);
 			}
 			catch (Exception exception) {
 				_log.error(
 					StringBundler.concat(
-						"Unable to fetch subscriptions for threadERC=",
-						threadERC, ": ", exception.getMessage()));
+						"Unable to fetch subscribers for threadERC=", threadERC,
+						": ", exception.getMessage()));
 
 				break;
 			}
@@ -88,7 +76,7 @@ public class SubscriptionService {
 				long userId = itemsJSONArray.getJSONObject(
 					i
 				).optLong(
-					"subscriberUserId", 0L
+					"userId", 0L
 				);
 
 				if (userId > 0L) {
@@ -111,14 +99,6 @@ public class SubscriptionService {
 		}
 
 		return userIds;
-	}
-
-	private String _encodeFilter(String filter) {
-		return URLEncoder.encode(
-			filter, StandardCharsets.UTF_8
-		).replace(
-			"+", "%20"
-		);
 	}
 
 	private static final int _PAGE_SIZE = 100;

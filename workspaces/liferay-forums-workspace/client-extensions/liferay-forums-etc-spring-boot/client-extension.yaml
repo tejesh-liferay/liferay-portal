@@ -11,7 +11,6 @@ liferay-forums-etc-spring-boot-oahs:
         -   Liferay.Object.Admin.REST.everything.read
         -   c_c2m0ban.everything.read
         -   c_c2m0message.everything
-        -   c_c2m0subscription.everything.read
         -   c_c2m0suspiciousactivity.everything
         -   c_c2m0thread.everything
         -   c_c2m0user.everything

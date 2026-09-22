@@ -535,56 +535,6 @@
 			"accountEntryRestricted": false,
 			"accountEntryRestrictedObjectFieldName": "",
 			"active": true,
-			"enableCategorization": false,
-			"enableComments": false,
-			"enableFormContainer": true,
-			"enableFriendlyURLCustomization": false,
-			"enableIndexSearch": true,
-			"enableLocalization": false,
-			"enableObjectEntryDraft": false,
-			"enableObjectEntryHistory": false,
-			"enableObjectEntrySchedule": false,
-			"enableObjectEntrySubscription": false,
-			"enableObjectEntryVersioning": false,
-			"externalReferenceCode": "C2M0_SUBSCRIPTION",
-			"label": {
-				"en_US": "C2M0 Subscription"
-			},
-			"modifiable": true,
-			"name": "C2M0Subscription",
-			"objectFields": [
-				{
-					"DBType": "Long",
-					"businessType": "LongInteger",
-					"externalReferenceCode": "SUBSCRIBER_USER_ID",
-					"label": {
-						"en_US": "Subscriber User ID"
-					},
-					"name": "subscriberUserId",
-					"required": true
-				}
-			],
-			"objectFolderExternalReferenceCode": "C2M0_FORUMS",
-			"panelCategoryKey": "",
-			"parameterRequired": false,
-			"pluralLabel": {
-				"en_US": "C2M0 Subscriptions"
-			},
-			"portlet": false,
-			"restContextPath": "/o/c/c2m0subscriptions",
-			"scope": "site",
-			"status": {
-				"code": 0,
-				"label": "approved",
-				"label_i18n": "Approved"
-			},
-			"system": false,
-			"titleObjectFieldName": "externalReferenceCode"
-		},
-		{
-			"accountEntryRestricted": false,
-			"accountEntryRestrictedObjectFieldName": "",
-			"active": true,
 			"enableCategorization": true,
 			"enableComments": false,
 			"enableFormContainer": true,
@@ -682,7 +632,7 @@
 			"enableObjectEntryDraft": false,
 			"enableObjectEntryHistory": false,
 			"enableObjectEntrySchedule": false,
-			"enableObjectEntrySubscription": false,
+			"enableObjectEntrySubscription": true,
 			"enableObjectEntryVersioning": false,
 			"externalReferenceCode": "C2M0_THREAD",
 			"label": {
@@ -772,17 +722,6 @@
 					"name": "threadMessages",
 					"objectDefinitionExternalReferenceCode1": "C2M0_THREAD",
 					"objectDefinitionExternalReferenceCode2": "C2M0_MESSAGE",
-					"type": "oneToMany"
-				},
-				{
-					"deletionType": "cascade",
-					"externalReferenceCode": "C2M0_THREAD_SUBSCRIPTIONS",
-					"label": {
-						"en_US": "Thread Subscriptions"
-					},
-					"name": "threadSubscriptions",
-					"objectDefinitionExternalReferenceCode1": "C2M0_THREAD",
-					"objectDefinitionExternalReferenceCode2": "C2M0_SUBSCRIPTION",
 					"type": "oneToMany"
 				},
 				{
@@ -1029,13 +968,13 @@
 				},
 				{
 					"deletionType": "cascade",
-					"externalReferenceCode": "L_USER_TO_C2M0_SUBSCRIPTIONS",
+					"externalReferenceCode": "L_USER_TO_C2M0_USERS",
 					"label": {
-						"en_US": "L User to C2M0 Subscriptions"
+						"en_US": "L User to C2M0 Users"
 					},
-					"name": "lUserToC2M0Subscriptions",
+					"name": "lUserToC2M0Users",
 					"objectDefinitionExternalReferenceCode1": "L_USER",
-					"objectDefinitionExternalReferenceCode2": "C2M0_SUBSCRIPTION",
+					"objectDefinitionExternalReferenceCode2": "C2M0_USER",
 					"type": "oneToMany"
 				}
 			],

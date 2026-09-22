@@ -1597,11 +1597,10 @@ if (messageDetail) {
 						canUpdateMessage = true;
 					}
 
-					/* Subscription state lives in the ForumSubscription object.
-		   ForumSubscription VIEW is granted at company scope, so the list
-		   is NOT scoped to the caller; the filter must also match the
-		   current user's subscriberUserId or any subscriber's row can be
-		   mistaken for "I am subscribed". */
+					/* Native Object Entry subscription (enableObjectEntrySubscription on
+					   C2M0Thread): the thread's own "actions" map already carries whichever
+					   of "subscribe"/"unsubscribe" is currently valid for this user, each
+					   with its own href/method -- no separate lookup call is needed. */
 
 					let subscribeBtn = messageDetail.querySelector(
 						'#forumsDetailSubscribeBtn'
@@ -1610,185 +1609,103 @@ if (messageDetail) {
 					if (
 						subscribeBtn &&
 						!isBanned &&
-						parseInt(currentUserId, 10) > 0
+						parseInt(currentUserId, 10) > 0 &&
+						actions &&
+						(actions['subscribe'] || actions['unsubscribe'])
 					) {
-						const subscriptionsUrl =
-							portalURL +
-							'/o/c/c2m0subscriptions/scopes/' +
-							scopeGroupId;
+						let subscribeAction = actions['subscribe'];
+						let unsubscribeAction = actions['unsubscribe'];
 
-						/* Relationship fields must be filtered by the related
-						   entry's ERC, not its numeric id, or the OData
-						   parser throws "Incompatible types." */
-						const subscriptionFilter = encodeURIComponent(
-							"r_threadSubscriptions_c_c2m0ThreadERC eq '" +
-								externalReferenceCode +
-								"' and subscriberUserId eq " +
-								parseInt(currentUserId, 10)
-						);
+						function siblingAction(action, nextRel) {
+							return {
+								href: action.href.replace(
+									/\/(subscribe|unsubscribe)$/,
+									'/' + nextRel
+								),
+								method: action.method || 'POST',
+							};
+						}
 
-						Liferay.Util.fetch(
-							subscriptionsUrl +
-								'?pageSize=1&fields=id&filter=' +
-								subscriptionFilter,
-							{
+						function renderSubscribeLabel(button) {
+							button.textContent = unsubscribeAction
+								? messageDetail.dataset.labelUnsubscribe ||
+									'Unsubscribe'
+								: messageDetail.dataset.labelSubscribe || 'Subscribe';
+						}
+
+						renderSubscribeLabel(subscribeBtn);
+						subscribeBtn.style.display = '';
+
+						const newSubBtn = subscribeBtn.cloneNode(true);
+						subscribeBtn.parentNode.replaceChild(newSubBtn, subscribeBtn);
+						subscribeBtn = newSubBtn;
+
+						subscribeBtn.addEventListener('click', function (event) {
+							event.preventDefault();
+							const button = this;
+							button.style.opacity = '0.5';
+							button.style.pointerEvents = 'none';
+
+							const activeAction = unsubscribeAction || subscribeAction;
+							const wasSubscribed = !!unsubscribeAction;
+
+							Liferay.Util.fetch(activeAction.href, {
 								headers,
-								method: 'GET',
-							}
-						)
-							.then((r) => {
-								return r.ok ? r.json() : {items: []};
+								method: activeAction.method || 'POST',
 							})
-							.then((page) => {
-								const [subscription] = page.items || [];
-								let subscriptionId = subscription
-									? subscription.id
-									: 0;
-
-								function renderSubscribeLabel(button) {
-									button.textContent = subscriptionId
-										? messageDetail.dataset
-												.labelUnsubscribe ||
-											'Unsubscribe'
-										: messageDetail.dataset
-												.labelSubscribe || 'Subscribe';
-								}
-
-								renderSubscribeLabel(subscribeBtn);
-								subscribeBtn.style.display = '';
-
-								const newSubBtn = subscribeBtn.cloneNode(true);
-								subscribeBtn.parentNode.replaceChild(
-									newSubBtn,
-									subscribeBtn
-								);
-								subscribeBtn = newSubBtn;
-
-								subscribeBtn.addEventListener(
-									'click',
-									function (event) {
-										event.preventDefault();
-										const button = this;
-										button.style.opacity = '0.5';
-										button.style.pointerEvents = 'none';
-
-										const request = subscriptionId
-											? Liferay.Util.fetch(
-													portalURL +
-														'/o/c/c2m0subscriptions/' +
-														subscriptionId,
-													{
-														headers,
-														method: 'DELETE',
-													}
-												).then((r) => {
-													if (r.ok) {
-														subscriptionId = 0;
-													}
-
-													return r.ok;
-												})
-											: Liferay.Util.fetch(
-													subscriptionsUrl,
-													{
-														body: JSON.stringify({
-															r_lUserToC2M0Subscriptions_userId:
-																parseInt(
-																	currentUserId,
-																	10
-																),
-															r_threadSubscriptions_c_c2m0ThreadId:
-																parseInt(
-																	messageId,
-																	10
-																),
-															subscriberUserId:
-																parseInt(
-																	currentUserId,
-																	10
-																),
-														}),
-														headers,
-														method: 'POST',
-													}
-												).then((r) => {
-													if (!r.ok) {
-														return false;
-													}
-
-													return r
-														.json()
-														.then((created) => {
-															subscriptionId =
-																created.id;
-
-															return true;
-														});
-												});
-
-										request
-											.then((ok) => {
-												if (!ok) {
-													return;
-												}
-
-												renderSubscribeLabel(button);
-
-												const optionsMenu =
-													button.closest(
-														'.dropdown-menu'
-													);
-												if (optionsMenu) {
-													optionsMenu.classList.remove(
-														'show'
-													);
-												}
-
-												if (
-													Liferay.Util &&
-													Liferay.Util.openToast
-												) {
-													const toastMsg =
-														subscriptionId
-															? messageDetail
-																	.dataset
-																	.labelSubscribedToast ||
-																'You have been subscribed to this message.'
-															: messageDetail
-																	.dataset
-																	.labelUnsubscribedToast ||
-																'You have been unsubscribed from this message.';
-													Liferay.Util.openToast({
-														message: Liferay.Util.escapeHTML(toastMsg),
-														title: Liferay.Util.escapeHTML(
-															messageDetail
-																.dataset
-																.labelSuccess ||
-																'Success'
-														),
-														type: 'success',
-													});
-												}
-											})
-											.catch((error) => {
-												console.error(
-													'Subscription error:',
-													error
-												);
-											})
-											.finally(() => {
-												button.style.opacity = '1';
-												button.style.pointerEvents = '';
-											});
+								.then((r) => {
+									if (!r.ok) {
+										throw new Error('HTTP ' + r.status);
 									}
-								);
-							})
-							.catch((error) => {
-								console.error(
-									'Subscription lookup error:',
-									error
-								);
-							});
+
+									if (wasSubscribed) {
+										subscribeAction = siblingAction(
+											unsubscribeAction,
+											'subscribe'
+										);
+										unsubscribeAction = null;
+									}
+									else {
+										unsubscribeAction = siblingAction(
+											subscribeAction,
+											'unsubscribe'
+										);
+										subscribeAction = null;
+									}
+
+									renderSubscribeLabel(button);
+
+									const optionsMenu = button.closest('.dropdown-menu');
+									if (optionsMenu) {
+										optionsMenu.classList.remove('show');
+									}
+
+									if (Liferay.Util && Liferay.Util.openToast) {
+										const toastMsg = wasSubscribed
+											? messageDetail.dataset
+												.labelUnsubscribedToast ||
+												'You have been unsubscribed from this message.'
+											: messageDetail.dataset
+												.labelSubscribedToast ||
+												'You have been subscribed to this message.';
+										Liferay.Util.openToast({
+											message: Liferay.Util.escapeHTML(toastMsg),
+											title: Liferay.Util.escapeHTML(
+												messageDetail.dataset.labelSuccess ||
+													'Success'
+											),
+											type: 'success',
+										});
+									}
+								})
+								.catch((error) => {
+									console.error('Subscription error:', error);
+								})
+								.finally(() => {
+									button.style.opacity = '1';
+									button.style.pointerEvents = '';
+								});
+						});
 					}
 
 					/* Lock/Unlock topic — moderator only. Toggles the thread's

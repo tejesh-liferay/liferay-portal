@@ -1477,7 +1477,12 @@ if (messageComposer) {
 						return r.json();
 					})
 					.then((msg) => {
-						const {friendlyUrlPath, id: threadId, scopeKey} = msg;
+						const {
+							actions,
+							friendlyUrlPath,
+							id: threadId,
+							scopeKey,
+						} = msg;
 
 						const msgPayload = {
 							body,
@@ -1514,28 +1519,21 @@ if (messageComposer) {
 						if (
 							subscribeCheck &&
 							subscribeCheck.checked &&
-							parseInt(currentUserId, 10) > 0
+							parseInt(currentUserId, 10) > 0 &&
+							actions &&
+							actions['subscribe']
 						) {
+
+							/* A brand-new thread can never already be
+							   subscribed, so its own creation response
+							   always carries a native "subscribe" action. */
+
 							promises.push(
-								Liferay.Util.fetch(
-									portalURL +
-										'/o/c/c2m0subscriptions/scopes/' +
-										scopeGroupId,
-									{
-										body: JSON.stringify({
-											r_lUserToC2M0Subscriptions_userId:
-												parseInt(currentUserId, 10),
-											r_threadSubscriptions_c_c2m0ThreadId:
-												threadId,
-											subscriberUserId: parseInt(
-												currentUserId,
-												10
-											),
-										}),
-										headers,
-										method: 'POST',
-									}
-								).then((r) => {
+								Liferay.Util.fetch(actions['subscribe'].href, {
+									headers,
+									method:
+										actions['subscribe'].method || 'POST',
+								}).then((r) => {
 									if (!r.ok) {
 										throw new Error('HTTP ' + r.status);
 									}
