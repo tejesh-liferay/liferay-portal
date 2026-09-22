@@ -135,6 +135,10 @@ public interface ObjectEntryService extends BaseService {
 		throws PortalException;
 
 	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
+	public List<Long> getObjectEntrySubscriberUserIds(long objectEntryId)
+		throws PortalException;
+
+	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
 	public List<ObjectEntry> getOneToManyObjectEntries(
 			long groupId, long objectRelationshipId, Predicate predicate,
 			boolean preferApproved, long primaryKey, boolean related,
@@ -215,4 +219,4 @@ public interface ObjectEntryService extends BaseService {
 		throws PortalException;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-1873666262
+// LIFERAY-SERVICE-BUILDER-HASH:104518260

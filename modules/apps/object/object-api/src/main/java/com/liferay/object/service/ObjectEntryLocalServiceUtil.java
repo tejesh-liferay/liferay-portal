@@ -579,6 +579,12 @@ public class ObjectEntryLocalServiceUtil {
 			groupId, objectEntryFolderId);
 	}
 
+	public static List<Long> getObjectEntrySubscriberUserIds(long objectEntryId)
+		throws PortalException {
+
+		return getService().getObjectEntrySubscriberUserIds(objectEntryId);
+	}
+
 	public static Map<Object, Long> getOneToManyAggregationCounts(
 			long groupId, long objectDefinitionId, long objectEntryId,
 			long objectRelationshipId, String aggregationTerm,
@@ -910,4 +916,4 @@ public class ObjectEntryLocalServiceUtil {
 			ObjectEntryLocalServiceUtil.class, ObjectEntryLocalService.class);
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:481668498
+// LIFERAY-SERVICE-BUILDER-HASH:-1812412208

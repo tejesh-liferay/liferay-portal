@@ -174,6 +174,12 @@ public class ObjectEntryServiceUtil {
 			externalReferenceCode, groupId, objectDefinitionId);
 	}
 
+	public static List<Long> getObjectEntrySubscriberUserIds(long objectEntryId)
+		throws PortalException {
+
+		return getService().getObjectEntrySubscriberUserIds(objectEntryId);
+	}
+
 	public static List<ObjectEntry> getOneToManyObjectEntries(
 			long groupId, long objectRelationshipId,
 			com.liferay.petra.sql.dsl.expression.Predicate predicate,
@@ -325,4 +331,4 @@ public class ObjectEntryServiceUtil {
 		new Snapshot<>(ObjectEntryServiceUtil.class, ObjectEntryService.class);
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-812823718
+// LIFERAY-SERVICE-BUILDER-HASH:258341212

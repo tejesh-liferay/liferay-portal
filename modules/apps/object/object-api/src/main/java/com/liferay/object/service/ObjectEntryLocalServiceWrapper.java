@@ -662,6 +662,15 @@ public class ObjectEntryLocalServiceWrapper
 	}
 
 	@Override
+	public java.util.List<Long> getObjectEntrySubscriberUserIds(
+			long objectEntryId)
+		throws com.liferay.portal.kernel.exception.PortalException {
+
+		return _objectEntryLocalService.getObjectEntrySubscriberUserIds(
+			objectEntryId);
+	}
+
+	@Override
 	public java.util.Map<Object, Long> getOneToManyAggregationCounts(
 			long groupId, long objectDefinitionId, long objectEntryId,
 			long objectRelationshipId, String aggregationTerm,
@@ -1050,4 +1059,4 @@ public class ObjectEntryLocalServiceWrapper
 	private ObjectEntryLocalService _objectEntryLocalService;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:660663488
+// LIFERAY-SERVICE-BUILDER-HASH:1678805137

@@ -437,6 +437,10 @@ public interface ObjectEntryLocalService
 		long groupId, long objectEntryFolderId);
 
 	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
+	public List<Long> getObjectEntrySubscriberUserIds(long objectEntryId)
+		throws PortalException;
+
+	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
 	public Map<Object, Long> getOneToManyAggregationCounts(
 			long groupId, long objectDefinitionId, long objectEntryId,
 			long objectRelationshipId, String aggregationTerm,
@@ -625,4 +629,4 @@ public interface ObjectEntryLocalService
 		throws PortalException;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:872444325
+// LIFERAY-SERVICE-BUILDER-HASH:1220990997
