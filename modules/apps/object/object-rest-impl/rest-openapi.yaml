@@ -1129,21 +1129,6 @@ paths:
                         application/json: {}
                         application/xml: {}
             tags: ["ObjectEntry"]
-    "/by-external-reference-code/{externalReferenceCode}/unsubscribe":
-        post:
-            operationId: postByExternalReferenceCodeUnsubscribe
-            parameters:
-                -   in: path
-                    name: externalReferenceCode
-                    required: true
-                    schema:
-                        type: string
-            responses:
-                200:
-                    content:
-                        application/json: {}
-                        application/xml: {}
-            tags: ["ObjectEntry"]
     "/by-external-reference-code/{externalReferenceCode}/subscribers":
         get:
             operationId: getByExternalReferenceCodeSubscribersPage
@@ -1174,6 +1159,21 @@ paths:
                                 items:
                                     $ref: "#/components/schemas/ObjectEntrySubscriber"
                                 type: array
+            tags: ["ObjectEntry"]
+    "/by-external-reference-code/{externalReferenceCode}/unsubscribe":
+        post:
+            operationId: postByExternalReferenceCodeUnsubscribe
+            parameters:
+                -   in: path
+                    name: externalReferenceCode
+                    required: true
+                    schema:
+                        type: string
+            responses:
+                200:
+                    content:
+                        application/json: {}
+                        application/xml: {}
             tags: ["ObjectEntry"]
     "/by-external-reference-code/{externalReferenceCode}/versions":
         get:
@@ -2212,6 +2212,42 @@ paths:
                         application/json: {}
                         application/xml: {}
             tags: ["ObjectEntry"]
+    "/scopes/{scopeKey}/by-external-reference-code/{externalReferenceCode}/subscribers":
+        get:
+            operationId: getScopeScopeKeyByExternalReferenceCodeSubscribersPage
+            parameters:
+                -   in: path
+                    name: scopeKey
+                    required: true
+                    schema:
+                        type: string
+                -   in: path
+                    name: externalReferenceCode
+                    required: true
+                    schema:
+                        type: string
+                -   in: query
+                    name: page
+                    schema:
+                        type: integer
+                -   in: query
+                    name: pageSize
+                    schema:
+                        type: integer
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                items:
+                                    $ref: "#/components/schemas/ObjectEntrySubscriber"
+                                type: array
+                        application/xml:
+                            schema:
+                                items:
+                                    $ref: "#/components/schemas/ObjectEntrySubscriber"
+                                type: array
+            tags: ["ObjectEntry"]
     "/scopes/{scopeKey}/by-external-reference-code/{externalReferenceCode}/translations":
         get:
             operationId: getScopeScopeKeyByExternalReferenceCodeTranslation
@@ -2348,42 +2384,6 @@ paths:
                     content:
                         application/json: {}
                         application/xml: {}
-            tags: ["ObjectEntry"]
-    "/scopes/{scopeKey}/by-external-reference-code/{externalReferenceCode}/subscribers":
-        get:
-            operationId: getScopeScopeKeyByExternalReferenceCodeSubscribersPage
-            parameters:
-                -   in: path
-                    name: scopeKey
-                    required: true
-                    schema:
-                        type: string
-                -   in: path
-                    name: externalReferenceCode
-                    required: true
-                    schema:
-                        type: string
-                -   in: query
-                    name: page
-                    schema:
-                        type: integer
-                -   in: query
-                    name: pageSize
-                    schema:
-                        type: integer
-            responses:
-                200:
-                    content:
-                        application/json:
-                            schema:
-                                items:
-                                    $ref: "#/components/schemas/ObjectEntrySubscriber"
-                                type: array
-                        application/xml:
-                            schema:
-                                items:
-                                    $ref: "#/components/schemas/ObjectEntrySubscriber"
-                                type: array
             tags: ["ObjectEntry"]
     "/scopes/{scopeKey}/by-external-reference-code/{externalReferenceCode}/versions":
         get:
