@@ -107,6 +107,7 @@ import com.liferay.object.rest.dto.v1_0.FileEntry;
 import com.liferay.object.rest.dto.v1_0.Link;
 import com.liferay.object.rest.dto.v1_0.ListEntry;
 import com.liferay.object.rest.dto.v1_0.ObjectEntry;
+import com.liferay.object.rest.dto.v1_0.ObjectEntrySubscriber;
 import com.liferay.object.rest.dto.v1_0.ParentTaxonomyCategory;
 import com.liferay.object.rest.dto.v1_0.ParentTaxonomyVocabulary;
 import com.liferay.object.rest.dto.v1_0.Status;
@@ -272,6 +273,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
@@ -7154,6 +7156,83 @@ public class DefaultObjectEntryManagerImplTest
 				objectField.isIndexed(),
 				objectEntryContentJSONObject.has(objectField.getName()));
 		}
+	}
+
+	@Test
+	public void testGetObjectEntrySubscribers() throws Exception {
+		ObjectDefinition objectDefinition = _addObjectDefinition(
+			true,
+			Collections.singletonList(
+				new TextObjectFieldBuilder(
+				).labelMap(
+					RandomTestUtil.randomLocaleStringMap()
+				).name(
+					"textObjectFieldName"
+				).build()),
+			ObjectDefinitionConstants.SCOPE_SITE);
+
+		ObjectEntry objectEntry = _addObjectEntry(
+			objectDefinition,
+			new ObjectEntry() {
+				{
+					properties = Collections.emptyMap();
+				}
+			},
+			_group.getGroupKey());
+
+		Page<ObjectEntrySubscriber> objectEntrySubscribersPage =
+			_defaultObjectEntryManager.getObjectEntrySubscribers(
+				objectEntry.getExternalReferenceCode(), objectDefinition,
+				objectEntry.getScopeKey(), Pagination.of(1, 10));
+
+		Assert.assertEquals(0, objectEntrySubscribersPage.getTotalCount());
+
+		_defaultObjectEntryManager.subscribeObjectEntry(
+			objectEntry.getExternalReferenceCode(), objectDefinition,
+			objectEntry.getScopeKey());
+
+		_user = _addUser();
+
+		Role role = _addRoleUser(
+			new String[] {ActionKeys.VIEW}, objectDefinition, _user);
+
+		AssertUtils.assertFailure(
+			PrincipalException.MustHavePermission.class,
+			StringBundler.concat(
+				"User ", _user.getUserId(),
+				" must have SUBSCRIBE permission for ",
+				objectDefinition.getClassName(), StringPool.SPACE,
+				objectEntry.getId()),
+			() -> _defaultObjectEntryManager.getObjectEntrySubscribers(
+				objectEntry.getExternalReferenceCode(), objectDefinition,
+				objectEntry.getScopeKey(), Pagination.of(1, 10)));
+
+		_resourcePermissionLocalService.addResourcePermission(
+			companyId, objectDefinition.getClassName(),
+			ResourceConstants.SCOPE_COMPANY, String.valueOf(companyId),
+			role.getRoleId(), ActionKeys.SUBSCRIBE);
+
+		_defaultObjectEntryManager.subscribeObjectEntry(
+			objectEntry.getExternalReferenceCode(), objectDefinition,
+			objectEntry.getScopeKey());
+
+		objectEntrySubscribersPage =
+			_defaultObjectEntryManager.getObjectEntrySubscribers(
+				objectEntry.getExternalReferenceCode(), objectDefinition,
+				objectEntry.getScopeKey(), Pagination.of(1, 10));
+
+		Assert.assertEquals(2, objectEntrySubscribersPage.getTotalCount());
+
+		Set<Long> userIds = new HashSet<>();
+
+		for (ObjectEntrySubscriber objectEntrySubscriber :
+				objectEntrySubscribersPage.getItems()) {
+
+			userIds.add(objectEntrySubscriber.getUserId());
+		}
+
+		Assert.assertTrue(userIds.contains(adminUser.getUserId()));
+		Assert.assertTrue(userIds.contains(_user.getUserId()));
 	}
 
 	@Test
