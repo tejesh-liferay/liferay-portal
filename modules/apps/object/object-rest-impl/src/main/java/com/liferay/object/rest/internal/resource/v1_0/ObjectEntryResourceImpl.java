@@ -15,6 +15,7 @@ import com.liferay.object.model.ObjectField;
 import com.liferay.object.model.ObjectRelationship;
 import com.liferay.object.model.ObjectRelationshipModel;
 import com.liferay.object.rest.dto.v1_0.ObjectEntry;
+import com.liferay.object.rest.dto.v1_0.ObjectEntrySubscriber;
 import com.liferay.object.rest.dto.v1_0.TranslationResponse;
 import com.liferay.object.rest.dto.v1_0.ValidationError;
 import com.liferay.object.rest.dto.v1_0.ValidationRequest;
@@ -439,6 +440,26 @@ public class ObjectEntryResourceImpl
 	}
 
 	@Override
+	public Page<ObjectEntrySubscriber>
+			getByExternalReferenceCodeSubscribersPage(
+				String externalReferenceCode, Pagination pagination)
+		throws Exception {
+
+		if (!_objectDefinition.isEnableObjectEntrySubscription()) {
+			throw new UnsupportedOperationException();
+		}
+
+		DefaultObjectEntryManager defaultObjectEntryManager =
+			DefaultObjectEntryManagerProvider.provide(
+				_objectEntryManagerRegistry.getObjectEntryManager(
+					_objectDefinition.getCompanyId(),
+					_objectDefinition.getStorageType()));
+
+		return defaultObjectEntryManager.getObjectEntrySubscribers(
+			externalReferenceCode, _objectDefinition, null, pagination);
+	}
+
+	@Override
 	public Page<ObjectEntry> getByExternalReferenceCodeVersionsPage(
 			String externalReferenceCode, Pagination pagination, Sort[] sorts)
 		throws Exception {
@@ -776,6 +797,27 @@ public class ObjectEntryResourceImpl
 		return defaultObjectEntryManager.getObjectEntryByVersion(
 			_getDTOConverterContext(null), externalReferenceCode,
 			_objectDefinition, scopeKey, version);
+	}
+
+	@Override
+	public Page<ObjectEntrySubscriber>
+			getScopeScopeKeyByExternalReferenceCodeSubscribersPage(
+				String scopeKey, String externalReferenceCode,
+				Pagination pagination)
+		throws Exception {
+
+		if (!_objectDefinition.isEnableObjectEntrySubscription()) {
+			throw new UnsupportedOperationException();
+		}
+
+		DefaultObjectEntryManager defaultObjectEntryManager =
+			DefaultObjectEntryManagerProvider.provide(
+				_objectEntryManagerRegistry.getObjectEntryManager(
+					_objectDefinition.getCompanyId(),
+					_objectDefinition.getStorageType()));
+
+		return defaultObjectEntryManager.getObjectEntrySubscribers(
+			externalReferenceCode, _objectDefinition, scopeKey, pagination);
 	}
 
 	@Override

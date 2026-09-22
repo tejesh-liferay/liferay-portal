@@ -51,6 +51,7 @@ import com.liferay.object.relationship.util.ObjectRelationshipUtil;
 import com.liferay.object.rest.dto.v1_0.FileEntry;
 import com.liferay.object.rest.dto.v1_0.Folder;
 import com.liferay.object.rest.dto.v1_0.ObjectEntry;
+import com.liferay.object.rest.dto.v1_0.ObjectEntrySubscriber;
 import com.liferay.object.rest.dto.v1_0.Status;
 import com.liferay.object.rest.dto.v1_0.SystemProperties;
 import com.liferay.object.rest.filter.factory.FilterFactory;
@@ -1016,6 +1017,37 @@ public class DefaultObjectEntryManagerImpl
 				dtoConverterContext, objectDefinition, objectEntryVersion,
 				serviceBuilderObjectEntry),
 			serviceBuilderObjectEntry);
+	}
+
+	@Override
+	public Page<ObjectEntrySubscriber> getObjectEntrySubscribers(
+			String externalReferenceCode, ObjectDefinition objectDefinition,
+			String scopeKey, Pagination pagination)
+		throws Exception {
+
+		com.liferay.object.model.ObjectEntry serviceBuilderObjectEntry =
+			_objectEntryService.getObjectEntry(
+				externalReferenceCode, getGroupId(objectDefinition, scopeKey),
+				objectDefinition.getObjectDefinitionId());
+
+		List<ObjectEntrySubscriber> objectEntrySubscribers =
+			TransformUtil.transform(
+				_objectEntryService.getObjectEntrySubscriberUserIds(
+					serviceBuilderObjectEntry.getObjectEntryId()),
+				userId -> {
+					ObjectEntrySubscriber objectEntrySubscriber =
+						new ObjectEntrySubscriber();
+
+					objectEntrySubscriber.setUserId(() -> userId);
+
+					return objectEntrySubscriber;
+				});
+
+		return Page.of(
+			ListUtil.subList(
+				objectEntrySubscribers, _getStartPosition(pagination),
+				_getEndPosition(pagination)),
+			pagination, objectEntrySubscribers.size());
 	}
 
 	@Override

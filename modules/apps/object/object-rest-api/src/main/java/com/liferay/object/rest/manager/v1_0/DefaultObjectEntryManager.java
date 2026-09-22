@@ -8,6 +8,7 @@ package com.liferay.object.rest.manager.v1_0;
 import com.liferay.object.model.ObjectDefinition;
 import com.liferay.object.model.ObjectRelationship;
 import com.liferay.object.rest.dto.v1_0.ObjectEntry;
+import com.liferay.object.rest.dto.v1_0.ObjectEntrySubscriber;
 import com.liferay.portal.kernel.search.Sort;
 import com.liferay.portal.kernel.search.filter.Filter;
 import com.liferay.portal.odata.filter.expression.Expression;
@@ -174,6 +175,11 @@ public interface DefaultObjectEntryManager extends ObjectEntryManager {
 			DTOConverterContext dtoConverterContext,
 			String externalReferenceCode, ObjectDefinition objectDefinition,
 			String scopeKey, int version)
+		throws Exception;
+
+	public Page<ObjectEntrySubscriber> getObjectEntrySubscribers(
+			String externalReferenceCode, ObjectDefinition objectDefinition,
+			String scopeKey, Pagination pagination)
 		throws Exception;
 
 	public Page<ObjectEntry> getRelatedObjectEntries(
