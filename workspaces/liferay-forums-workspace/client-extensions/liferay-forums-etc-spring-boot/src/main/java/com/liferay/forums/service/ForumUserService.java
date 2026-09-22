@@ -58,7 +58,7 @@ public class ForumUserService {
 			String response = _liferayApiClient.get(
 				StringBundler.concat(
 					"/o/c/c2m0users/scopes/", siteId,
-					"?fields=portalUserId,screenName&pageSize=",
+					"?fields=r_lUserToC2M0Users_userId,screenName&pageSize=",
 					screenNames.size(), "&filter=", _encode(sb.toString())),
 				authToken);
 
@@ -80,7 +80,8 @@ public class ForumUserService {
 				}
 
 				String screenName = itemJSONObject.optString("screenName", "");
-				long forumUserId = itemJSONObject.optLong("portalUserId", 0L);
+				long forumUserId = itemJSONObject.optLong(
+					"r_lUserToC2M0Users_userId", 0L);
 
 				if (!screenName.isBlank() && (forumUserId > 0L)) {
 					userIds.put(screenName, forumUserId);
@@ -102,13 +103,13 @@ public class ForumUserService {
 		long forumUserId, String firstName, String lastName, long siteId,
 		String authToken) {
 
-		if ((forumUserId <= 0L) || (siteId <= 0L) ||
-			_exists(forumUserId, siteId, authToken)) {
-
+		if ((forumUserId <= 0L) || (siteId <= 0L)) {
 			return;
 		}
 
-		String screenName = _fetchScreenName(forumUserId, authToken);
+		JSONObject userJSONObject = _fetchUser(forumUserId, authToken);
+
+		String screenName = userJSONObject.optString("alternateName", "");
 
 		if (screenName.isBlank()) {
 			if (_log.isWarnEnabled()) {
@@ -120,14 +121,21 @@ public class ForumUserService {
 			return;
 		}
 
+		String externalReferenceCode = userJSONObject.optString(
+			"externalReferenceCode", "");
+
+		if (externalReferenceCode.isBlank() ||
+			_exists(externalReferenceCode, siteId, authToken)) {
+
+			return;
+		}
+
 		JSONObject payloadJSONObject = new JSONObject();
 
 		payloadJSONObject.put(
 			"firstName", firstName
 		).put(
 			"lastName", lastName
-		).put(
-			"portalUserId", forumUserId
 		).put(
 			"r_lUserToC2M0Users_userId", forumUserId
 		).put(
@@ -160,13 +168,19 @@ public class ForumUserService {
 		return URLEncoder.encode(value, StandardCharsets.UTF_8);
 	}
 
-	private boolean _exists(long forumUserId, long siteId, String authToken) {
+	private boolean _exists(
+		String externalReferenceCode, long siteId, String authToken) {
+
 		try {
 			String response = _liferayApiClient.get(
 				StringBundler.concat(
 					"/o/c/c2m0users/scopes/", siteId,
-					"?fields=portalUserId&pageSize=1&filter=",
-					_encode("portalUserId eq " + forumUserId)),
+					"?fields=id&pageSize=1&filter=",
+					_encode(
+						"r_lUserToC2M0Users_userERC eq '" +
+							StringUtil.replace(
+								externalReferenceCode, '\'', "''") +
+							"'")),
 				authToken);
 
 			JSONArray itemsJSONArray = new JSONObject(
@@ -185,37 +199,33 @@ public class ForumUserService {
 			if (_log.isWarnEnabled()) {
 				_log.warn(
 					StringBundler.concat(
-						"Unable to look up forum user ", forumUserId, ": ",
-						exception.getMessage()));
+						"Unable to look up forum user ", externalReferenceCode,
+						": ", exception.getMessage()));
 			}
 
 			return true;
 		}
 	}
 
-	private String _fetchScreenName(long forumUserId, String authToken) {
+	private JSONObject _fetchUser(long forumUserId, String authToken) {
 		try {
 			String response = _liferayApiClient.get(
 				StringBundler.concat(
 					"/o/headless-admin-user/v1.0/user-accounts/", forumUserId,
-					"?fields=alternateName"),
+					"?fields=alternateName,externalReferenceCode"),
 				authToken);
 
-			return new JSONObject(
-				response
-			).optString(
-				"alternateName", ""
-			);
+			return new JSONObject(response);
 		}
 		catch (Exception exception) {
 			if (_log.isWarnEnabled()) {
 				_log.warn(
 					StringBundler.concat(
-						"Unable to fetch the screen name for ", forumUserId,
-						": ", exception.getMessage()));
+						"Unable to fetch forum user ", forumUserId, ": ",
+						exception.getMessage()));
 			}
 
-			return "";
+			return new JSONObject();
 		}
 	}
 
