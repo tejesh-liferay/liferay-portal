@@ -385,7 +385,7 @@ public class ForumNotificationRestController extends BaseRestController {
 		}
 
 		JSONObject dtoJSONObject = payloadJSONObject.optJSONObject(
-			"objectEntry");
+			"objectEntryDTOC2M0Message");
 
 		JSONObject creatorJSONObject =
 			(dtoJSONObject != null) ? dtoJSONObject.optJSONObject("creator") :
