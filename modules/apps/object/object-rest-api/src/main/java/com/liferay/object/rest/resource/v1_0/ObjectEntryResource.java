@@ -6,6 +6,7 @@
 package com.liferay.object.rest.resource.v1_0;
 
 import com.liferay.object.rest.dto.v1_0.ObjectEntry;
+import com.liferay.object.rest.dto.v1_0.ObjectEntrySubscriber;
 import com.liferay.object.rest.dto.v1_0.TranslationResponse;
 import com.liferay.object.rest.dto.v1_0.ValidationRequest;
 import com.liferay.object.rest.dto.v1_0.ValidationResponse;
@@ -85,6 +86,11 @@ public interface ObjectEntryResource {
 			String externalReferenceCode, Integer version)
 		throws Exception;
 
+	public Page<ObjectEntrySubscriber>
+			getByExternalReferenceCodeSubscribersPage(
+				String externalReferenceCode, Pagination pagination)
+		throws Exception;
+
 	public Page<ObjectEntry> getByExternalReferenceCodeVersionsPage(
 			String externalReferenceCode, Pagination pagination,
 			com.liferay.portal.kernel.search.Sort[] sorts)
@@ -131,6 +137,12 @@ public interface ObjectEntryResource {
 
 	public ObjectEntry getScopeScopeKeyByExternalReferenceCodeByVersion(
 			String scopeKey, String externalReferenceCode, Integer version)
+		throws Exception;
+
+	public Page<ObjectEntrySubscriber>
+			getScopeScopeKeyByExternalReferenceCodeSubscribersPage(
+				String scopeKey, String externalReferenceCode,
+				Pagination pagination)
 		throws Exception;
 
 	public Response getScopeScopeKeyByExternalReferenceCodeTranslation(
@@ -409,4 +421,4 @@ public interface ObjectEntryResource {
 	}
 
 }
-// LIFERAY-REST-BUILDER-HASH:-1058332908
+// LIFERAY-REST-BUILDER-HASH:-1960066378
