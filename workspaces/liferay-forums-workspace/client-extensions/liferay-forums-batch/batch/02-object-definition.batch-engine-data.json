@@ -184,6 +184,16 @@
 						"en_US": "Answer"
 					},
 					"name": "answer",
+					"objectFieldSettings": [
+						{
+							"name": "defaultValue",
+							"value": "false"
+						},
+						{
+							"name": "defaultValueType",
+							"value": "inputAsValue"
+						}
+					],
 					"required": false
 				},
 				{
@@ -289,13 +299,27 @@
 					"required": true
 				},
 				{
-					"DBType": "Integer",
-					"businessType": "Integer",
-					"externalReferenceCode": "VOTE_SCORE",
+					"DBType": "String",
+					"businessType": "Aggregation",
+					"externalReferenceCode": "VOTE_TOTAL",
 					"label": {
-						"en_US": "Vote Score"
+						"en_US": "Vote Total"
 					},
-					"name": "voteScore",
+					"name": "voteTotal",
+					"objectFieldSettings": [
+						{
+							"name": "function",
+							"value": "SUM"
+						},
+						{
+							"name": "objectFieldName",
+							"value": "value"
+						},
+						{
+							"name": "objectRelationshipName",
+							"value": "messageVotes"
+						}
+					],
 					"required": false
 				}
 			],
@@ -555,60 +579,6 @@
 			],
 			"objectFields": [
 				{
-					"DBType": "Date",
-					"businessType": "Date",
-					"externalReferenceCode": "LAST_POST_DATE",
-					"label": {
-						"en_US": "Last Post Date"
-					},
-					"name": "lastPostDate",
-					"required": false
-				},
-				{
-					"DBType": "Boolean",
-					"businessType": "Boolean",
-					"externalReferenceCode": "LOCKED",
-					"label": {
-						"en_US": "Locked"
-					},
-					"name": "locked",
-					"required": false
-				},
-				{
-					"DBType": "String",
-					"businessType": "Text",
-					"externalReferenceCode": "TITLE",
-					"indexed": true,
-					"indexedAsKeyword": false,
-					"indexedLanguageId": "en_US",
-					"label": {
-						"en_US": "Title"
-					},
-					"localized": true,
-					"name": "title",
-					"required": false
-				},
-				{
-					"DBType": "BigDecimal",
-					"businessType": "PrecisionDecimal",
-					"externalReferenceCode": "PRIORITY",
-					"label": {
-						"en_US": "Priority"
-					},
-					"name": "priority",
-					"required": false
-				},
-				{
-					"DBType": "Boolean",
-					"businessType": "Boolean",
-					"externalReferenceCode": "QUESTION",
-					"label": {
-						"en_US": "Question"
-					},
-					"name": "question",
-					"required": false
-				},
-				{
 					"DBType": "String",
 					"businessType": "Aggregation",
 					"externalReferenceCode": "ANSWER_COUNT",
@@ -641,6 +611,26 @@
 					"required": false
 				},
 				{
+					"DBType": "Date",
+					"businessType": "Date",
+					"externalReferenceCode": "LAST_POST_DATE",
+					"label": {
+						"en_US": "Last Post Date"
+					},
+					"name": "lastPostDate",
+					"required": false
+				},
+				{
+					"DBType": "Boolean",
+					"businessType": "Boolean",
+					"externalReferenceCode": "LOCKED",
+					"label": {
+						"en_US": "Locked"
+					},
+					"name": "locked",
+					"required": false
+				},
+				{
 					"DBType": "String",
 					"businessType": "Aggregation",
 					"externalReferenceCode": "MESSAGE_COUNT",
@@ -668,6 +658,40 @@
 						"en_US": "Preview"
 					},
 					"name": "preview",
+					"required": false
+				},
+				{
+					"DBType": "BigDecimal",
+					"businessType": "PrecisionDecimal",
+					"externalReferenceCode": "PRIORITY",
+					"label": {
+						"en_US": "Priority"
+					},
+					"name": "priority",
+					"required": false
+				},
+				{
+					"DBType": "Boolean",
+					"businessType": "Boolean",
+					"externalReferenceCode": "QUESTION",
+					"label": {
+						"en_US": "Question"
+					},
+					"name": "question",
+					"required": false
+				},
+				{
+					"DBType": "String",
+					"businessType": "Text",
+					"externalReferenceCode": "TITLE",
+					"indexed": true,
+					"indexedAsKeyword": false,
+					"indexedLanguageId": "en_US",
+					"label": {
+						"en_US": "Title"
+					},
+					"localized": true,
+					"name": "title",
 					"required": false
 				},
 				{
@@ -881,32 +905,6 @@
 			"modifiable": true,
 			"name": "C2M0Vote",
 			"objectActions": [
-				{
-					"active": true,
-					"externalReferenceCode": "C2M0_VOTE_RECALCULATE_SCORE_ON_ADD_ACTION",
-					"label": {
-						"en_US": "Recalculate Vote Score On Add"
-					},
-					"name": "c2m0VoteRecalculateScoreOnAdd",
-					"objectActionExecutorKey": "function#liferay-forums-etc-spring-boot-object-action-recalculate-vote-score",
-					"objectActionTriggerKey": "onAfterAdd",
-					"parameters": {
-					},
-					"system": false
-				},
-				{
-					"active": true,
-					"externalReferenceCode": "C2M0_VOTE_RECALCULATE_SCORE_ON_DELETE_ACTION",
-					"label": {
-						"en_US": "Recalculate Vote Score On Delete"
-					},
-					"name": "c2m0VoteRecalculateScoreOnDelete",
-					"objectActionExecutorKey": "function#liferay-forums-etc-spring-boot-object-action-recalculate-vote-score",
-					"objectActionTriggerKey": "onAfterDelete",
-					"parameters": {
-					},
-					"system": false
-				}
 			],
 			"objectFields": [
 				{

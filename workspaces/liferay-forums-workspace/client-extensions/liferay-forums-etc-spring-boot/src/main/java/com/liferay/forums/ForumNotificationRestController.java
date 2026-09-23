@@ -232,28 +232,6 @@ public class ForumNotificationRestController extends BaseRestController {
 		}
 	}
 
-	private String _fetchTitle(long threadId, String authToken) {
-		try {
-			String response = _liferayApiClient.get(
-				"/o/c/c2m0threads/" + threadId + "?fields=title",
-				authToken);
-
-			return new JSONObject(
-				response
-			).optString(
-				"title", null
-			);
-		}
-		catch (Exception exception) {
-			_log.error(
-				StringBundler.concat(
-					"Unable to fetch ForumThread title for id=", threadId, ": ",
-					exception.getMessage()));
-
-			return null;
-		}
-	}
-
 	private JSONObject _fetchSite(JSONObject dtoJSONObject, String authToken) {
 		if (dtoJSONObject == null) {
 			return null;
@@ -290,6 +268,27 @@ public class ForumNotificationRestController extends BaseRestController {
 						"Unable to fetch site for ERC ", siteErc, ": ",
 						exception.getMessage()));
 			}
+
+			return null;
+		}
+	}
+
+	private String _fetchTitle(long threadId, String authToken) {
+		try {
+			String response = _liferayApiClient.get(
+				"/o/c/c2m0threads/" + threadId + "?fields=title", authToken);
+
+			return new JSONObject(
+				response
+			).optString(
+				"title", null
+			);
+		}
+		catch (Exception exception) {
+			_log.error(
+				StringBundler.concat(
+					"Unable to fetch ForumThread title for id=", threadId, ": ",
+					exception.getMessage()));
 
 			return null;
 		}
@@ -333,8 +332,8 @@ public class ForumNotificationRestController extends BaseRestController {
 		}
 
 		_forumNotificationService.notifyAll(
-			recipients, "mention", author, title,
-			_truncate(bodyPreview, 300), url, authToken);
+			recipients, "mention", author, title, _truncate(bodyPreview, 300),
+			url, authToken);
 
 		return recipients;
 	}

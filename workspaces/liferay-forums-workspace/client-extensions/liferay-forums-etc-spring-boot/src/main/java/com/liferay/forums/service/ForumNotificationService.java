@@ -102,7 +102,7 @@ public class ForumNotificationService {
 	// The condition on that object action only checks whether the recipient
 	// list is non empty, with no notion of "already sent," so it stays
 	// non-empty forever unless something clears it. Any later, unrelated
-	// update to this message (a vote changing voteScore, for one) also fires
+	// update to this message (marking it as the answer, for one) also fires
 	// onAfterUpdate and would re-satisfy that same condition, re-sending this
 	// notification to the same recipients. Clearing both lists back to "" in
 	// a follow-up patch closes that window: the object action's condition is

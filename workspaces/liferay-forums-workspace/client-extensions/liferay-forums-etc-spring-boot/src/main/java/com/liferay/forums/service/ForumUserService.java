@@ -172,15 +172,17 @@ public class ForumUserService {
 		String externalReferenceCode, long siteId, String authToken) {
 
 		try {
+			String escapedExternalReferenceCode = StringUtil.replace(
+				externalReferenceCode, '\'', "''");
+
 			String response = _liferayApiClient.get(
 				StringBundler.concat(
 					"/o/c/c2m0users/scopes/", siteId,
 					"?fields=id&pageSize=1&filter=",
 					_encode(
-						"r_lUserToC2M0Users_userERC eq '" +
-							StringUtil.replace(
-								externalReferenceCode, '\'', "''") +
-							"'")),
+						StringBundler.concat(
+							"r_lUserToC2M0Users_userERC eq '",
+							escapedExternalReferenceCode, "'"))),
 				authToken);
 
 			JSONArray itemsJSONArray = new JSONObject(

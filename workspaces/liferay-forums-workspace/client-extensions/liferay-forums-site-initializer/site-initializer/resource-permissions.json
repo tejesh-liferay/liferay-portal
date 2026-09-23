@@ -10,73 +10,6 @@
 	},
 	{
 		"actionIds": [
-			"ASSIGN_MEMBERS",
-			"VIEW"
-		],
-		"primKey": "[$ROLE_ID:Forum Banned$]",
-		"resourceName": "com.liferay.portal.kernel.model.Role",
-		"roleName": "Forum Moderator",
-		"scope": 4
-	},
-	{
-		"actionIds": [
-			"VIEW"
-		],
-		"resourceName": "com.liferay.portal.kernel.model.User",
-		"roleName": "Forum Moderator",
-		"scope": 1
-	},
-	{
-		"actionIds": [
-			"VIEW"
-		],
-		"primKey": "[$ROLE_ID:Forum Banned$]",
-		"resourceName": "com.liferay.portal.kernel.model.Role",
-		"roleName": "User",
-		"scope": 4
-	},
-	{
-		"actionIds": [
-			"DELETE",
-			"PERMISSIONS",
-			"UPDATE",
-			"VIEW"
-		],
-		"resourceName": "com.liferay.asset.kernel.model.AssetCategory",
-		"roleName": "Forum Category Admin",
-		"scope": 1
-	},
-	{
-		"actionIds": [
-			"DELETE",
-			"PERMISSIONS",
-			"UPDATE",
-			"VIEW"
-		],
-		"resourceName": "com.liferay.asset.kernel.model.AssetVocabulary",
-		"roleName": "Forum Category Admin",
-		"scope": 1
-	},
-	{
-		"actionIds": [
-			"VIEW"
-		],
-		"primKey": "0",
-		"resourceName": "com.liferay.asset.kernel.model.AssetCategory",
-		"roleName": "User",
-		"scope": 1
-	},
-	{
-		"actionIds": [
-			"VIEW"
-		],
-		"primKey": "0",
-		"resourceName": "com.liferay.asset.kernel.model.AssetVocabulary",
-		"roleName": "User",
-		"scope": 1
-	},
-	{
-		"actionIds": [
 			"DELETE",
 			"UPDATE",
 			"VIEW"
@@ -152,15 +85,6 @@
 	},
 	{
 		"actionIds": [
-			"ADD_OBJECT_ENTRY"
-		],
-		"primKey": "0",
-		"resourceName": "com.liferay.object#[$OBJECT_DEFINITION_ID:C2M0Attachment$]",
-		"roleName": "User",
-		"scope": 1
-	},
-	{
-		"actionIds": [
 			"ADD_CATEGORY",
 			"ADD_VOCABULARY"
 		],
@@ -175,6 +99,55 @@
 		],
 		"primKey": "0",
 		"resourceName": "com.liferay.asset.categories",
+		"roleName": "User",
+		"scope": 1
+	},
+	{
+		"actionIds": [
+			"DELETE",
+			"PERMISSIONS",
+			"UPDATE",
+			"VIEW"
+		],
+		"resourceName": "com.liferay.asset.kernel.model.AssetCategory",
+		"roleName": "Forum Category Admin",
+		"scope": 1
+	},
+	{
+		"actionIds": [
+			"VIEW"
+		],
+		"primKey": "0",
+		"resourceName": "com.liferay.asset.kernel.model.AssetCategory",
+		"roleName": "User",
+		"scope": 1
+	},
+	{
+		"actionIds": [
+			"DELETE",
+			"PERMISSIONS",
+			"UPDATE",
+			"VIEW"
+		],
+		"resourceName": "com.liferay.asset.kernel.model.AssetVocabulary",
+		"roleName": "Forum Category Admin",
+		"scope": 1
+	},
+	{
+		"actionIds": [
+			"VIEW"
+		],
+		"primKey": "0",
+		"resourceName": "com.liferay.asset.kernel.model.AssetVocabulary",
+		"roleName": "User",
+		"scope": 1
+	},
+	{
+		"actionIds": [
+			"ADD_OBJECT_ENTRY"
+		],
+		"primKey": "0",
+		"resourceName": "com.liferay.object#[$OBJECT_DEFINITION_ID:C2M0Attachment$]",
 		"roleName": "User",
 		"scope": 1
 	},
@@ -221,6 +194,33 @@
 		"primKey": "0",
 		"resourceName": "com.liferay.object#[$OBJECT_DEFINITION_ID:C2M0Vote$]",
 		"roleName": "User",
+		"scope": 1
+	},
+	{
+		"actionIds": [
+			"ASSIGN_MEMBERS",
+			"VIEW"
+		],
+		"primKey": "[$ROLE_ID:Forum Banned$]",
+		"resourceName": "com.liferay.portal.kernel.model.Role",
+		"roleName": "Forum Moderator",
+		"scope": 4
+	},
+	{
+		"actionIds": [
+			"VIEW"
+		],
+		"primKey": "[$ROLE_ID:Forum Banned$]",
+		"resourceName": "com.liferay.portal.kernel.model.Role",
+		"roleName": "User",
+		"scope": 4
+	},
+	{
+		"actionIds": [
+			"VIEW"
+		],
+		"resourceName": "com.liferay.portal.kernel.model.User",
+		"roleName": "Forum Moderator",
 		"scope": 1
 	}
 ]

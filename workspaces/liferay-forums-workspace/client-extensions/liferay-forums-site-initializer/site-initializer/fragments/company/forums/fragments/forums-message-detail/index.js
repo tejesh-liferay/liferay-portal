@@ -33,10 +33,10 @@ const forumsSharedFetch = function (url, options) {
 	}
 
 	return cache[url].then(({status, text}) => {
-		return new Response(
-			[204, 205, 304].includes(status) ? null : text,
-			{headers: {'Content-Type': 'application/json'}, status}
-		);
+		return new Response([204, 205, 304].includes(status) ? null : text, {
+			headers: {'Content-Type': 'application/json'},
+			status,
+		});
 	});
 };
 
@@ -356,12 +356,14 @@ if (messageDetail) {
 		closeReplyOptionMenus(null);
 	});
 
-	/* resolvedThread is the thread when the caller already loaded it (the
-	   mapped ERC lookup returns the full entry), so it is not fetched again */
+	/* resolvedThread and resolvedReply are the thread and the targeted reply
+	   when the caller already loaded them (the mapped ERC lookups return the
+	   full entry), so they are not fetched again */
 	const runMessageDetail = function (
 		resolvedMessageId,
 		replyId,
-		resolvedThread
+		resolvedThread,
+		resolvedReply
 	) {
 		messageId = resolvedMessageId;
 		const targetReplyId = replyId || null;
@@ -381,7 +383,15 @@ if (messageDetail) {
 		}
 
 		const replyPageSize = 10;
+
+		/* Deepest reply nesting loaded under a top-level reply */
+		const maxReplyDepth = 10;
 		let currentReplyPage = 1;
+
+		/* Whether the OP has rendered. It is the first top-level message, so
+		   page 1 renders it; a load that starts on a later page (a reply's
+		   display page) fetches it on its own. */
+		let originalPostLoaded = false;
 		let isBanned = false;
 
 		/* Whether the current user may lock/unlock this topic. Gated the same
@@ -561,6 +571,13 @@ if (messageDetail) {
 		let canVote = false; /* HATEOAS: set true when ForumVotes API exposes create action */
 		let canReply = false; /* HATEOAS: set true when ForumReplies API exposes create action */
 		let isMessageQuestion = false; /* Track if the message was marked as a question */
+		let threadHasAnswer = false; /* Seeded from the thread's answerCount aggregation, then kept in sync by Mark / Unmark as Answer */
+
+		/* The thread's messageCount aggregation, OP included. Seeded when the
+		   thread loads and refreshed on every later loadMessages, since the
+		   paged list only counts top-level replies. */
+		let threadMessageCount = null;
+		let threadExternalReferenceCode = null;
 		let messageCategoryFK = null;
 		let messageTitleText = '';
 		let messagePriority = 0; /* Thread priority (MB parity: Urgent 3 / Sticky 2 / Announcement 1) */
@@ -630,7 +647,7 @@ if (messageDetail) {
 				dateCreated,
 				id,
 				r_threadMessages_c_c2m0ThreadId,
-				voteScore,
+				voteTotal,
 			} = msg;
 
 			const creator = replyCreator || {};
@@ -650,7 +667,7 @@ if (messageDetail) {
 				'">' +
 				Liferay.Util.escapeHTML(timeAgo(dateCreated)) +
 				'</time>';
-			const score = voteScore || 0;
+			const score = parseInt(voteTotal, 10) || 0;
 			const solClass = isSolution
 				? ' forums-message-detail__reply-card--solution'
 				: '';
@@ -814,14 +831,14 @@ if (messageDetail) {
 			);
 		}
 
-		/* Sort messages: accepted answers first, then by voteScore desc, then dateCreated asc */
+		/* Sort messages: accepted answers first, then by voteTotal desc, then dateCreated asc */
 		function sortByVoteScore(messages) {
 			return messages
 				.slice()
 				.sort(
 					(
-						{answer: aAns, dateCreated: aDate, voteScore: aVote},
-						{answer: bAns, dateCreated: bDate, voteScore: bVote}
+						{answer: aAns, dateCreated: aDate, voteTotal: aVote},
+						{answer: bAns, dateCreated: bDate, voteTotal: bVote}
 					) => {
 
 						/* Accepted answers first */
@@ -833,9 +850,10 @@ if (messageDetail) {
 							return bAnswer - aAnswer;
 						}
 
-						/* Higher score first */
-						const aScore = aVote || 0;
-						const bScore = bVote || 0;
+						/* Higher score first. voteTotal is an Aggregation
+						   field, serialized as a string. */
+						const aScore = parseInt(aVote, 10) || 0;
+						const bScore = parseInt(bVote, 10) || 0;
 						if (bScore !== aScore) {
 							return bScore - aScore;
 						}
@@ -909,16 +927,13 @@ if (messageDetail) {
 		}
 
 		/* Fetch current user's votes for all messages in this message */
-		function fetchUserVotes(messageIds, callback) {
-			if (!messageIds || !messageIds.length) {
-				callback();
-
-				return;
-			}
-			if (!Liferay.ThemeDisplay.isSignedIn()) {
-				callback();
-
-				return;
+		function fetchUserVotes(messageIds) {
+			if (
+				!messageIds ||
+				!messageIds.length ||
+				!Liferay.ThemeDisplay.isSignedIn()
+			) {
+				return Promise.resolve();
 			}
 
 			/* Filter by current user's ID AND the messages actually being
@@ -929,10 +944,7 @@ if (messageDetail) {
 			   keeps the response small. Relationship fields compare as
 			   strings, so quote each id. */
 			const messageIdFilter = messageIds
-				.map(
-					(id) =>
-						"r_messageVotes_c_c2m0MessageId eq '" + id + "'"
-				)
+				.map((id) => "r_messageVotes_c_c2m0MessageId eq '" + id + "'")
 				.join(' or ');
 			const filterParam = encodeURIComponent(
 				'creatorId eq ' +
@@ -941,7 +953,8 @@ if (messageDetail) {
 					messageIdFilter +
 					')'
 			);
-			Liferay.Util.fetch(
+
+			return Liferay.Util.fetch(
 				portalURL +
 					'/o/c/c2m0votes/scopes/' +
 					scopeGroupId +
@@ -991,10 +1004,9 @@ if (messageDetail) {
 							}
 						}
 					);
-					callback();
 				})
-				.catch(() => {
-					callback();
+				.catch((error) => {
+					console.error('User votes error:', error);
 				});
 		}
 
@@ -1011,13 +1023,10 @@ if (messageDetail) {
 				if (existingValue === voteValue) {
 
 					/* Same direction: remove the vote (toggle off) */
-					Liferay.Util.fetch(
-						portalURL + '/o/c/c2m0votes/' + voteId,
-						{
-							headers,
-							method: 'DELETE',
-						}
-					)
+					Liferay.Util.fetch(portalURL + '/o/c/c2m0votes/' + voteId, {
+						headers,
+						method: 'DELETE',
+					})
 						.then(() => {
 							delete userVoteMap[messageId];
 							updateVoteScore(messageId, -voteValue);
@@ -1029,13 +1038,10 @@ if (messageDetail) {
 				else {
 
 					/* Opposite direction: delete old, create new */
-					Liferay.Util.fetch(
-						portalURL + '/o/c/c2m0votes/' + voteId,
-						{
-							headers,
-							method: 'DELETE',
-						}
-					)
+					Liferay.Util.fetch(portalURL + '/o/c/c2m0votes/' + voteId, {
+						headers,
+						method: 'DELETE',
+					})
 						.then(() => {
 							return createVote(messageId, voteValue);
 						})
@@ -1067,10 +1073,7 @@ if (messageDetail) {
 				portalURL + '/o/c/c2m0votes/scopes/' + scopeGroupId,
 				{
 					body: JSON.stringify({
-						r_lUserToC2M0Votes_userId: parseInt(
-							currentUserId,
-							10
-						),
+						r_lUserToC2M0Votes_userId: parseInt(currentUserId, 10),
 						r_messageVotes_c_c2m0MessageId: messageId,
 						value: voteValue,
 					}),
@@ -1098,7 +1101,18 @@ if (messageDetail) {
 				scoreEl.textContent = newScore;
 			}
 
-			/* Update button active states and icons */
+			renderVoteButtons(messageId);
+
+			/* ForumMessage.voteTotal is an Aggregation field that Liferay
+			   sums over the message's votes on read, so nothing persists a
+			   score after a vote; the DOM update above is all that is
+			   needed until the next load. */
+		}
+
+		/* Sync a message's vote buttons with canVote and userVoteMap. Cards
+		   render before the user's votes load, so this also runs once they
+		   arrive to enable the buttons and highlight the user's vote. */
+		function renderVoteButtons(messageId) {
 			const voteContainer = messageDetail.querySelector(
 				'.forums-vote[data-message-id="' + messageId + '"]'
 			);
@@ -1112,6 +1126,17 @@ if (messageDetail) {
 				const {voteValue} = userVoteMap[messageId] || {};
 				const isUp = voteValue === 1;
 				const isDown = voteValue === -1;
+
+				[
+					[upBtn, 'up'],
+					[downBtn, 'down'],
+				].forEach(([button, direction]) => {
+					if (button && canVote) {
+						button.dataset.messageId = messageId;
+						button.dataset.voteDir = direction;
+						button.disabled = false;
+					}
+				});
 
 				if (upBtn) {
 					upBtn.classList.toggle('active', isUp);
@@ -1143,11 +1168,6 @@ if (messageDetail) {
 					}
 				}
 			}
-
-			/* ForumMessage.voteScore is persisted server-side: an
-			   onAfterAdd/onAfterDelete object action on ForumVote
-			   recalculates it with the service account, since a non-owner
-			   has no UPDATE permission on ForumMessage. */
 		}
 
 		/* Attach vote click handlers after rendering */
@@ -1182,6 +1202,7 @@ if (messageDetail) {
 					.then((r) => {
 						if (r.ok) {
 							currentAnswerId = null;
+							threadHasAnswer = false;
 							setTimeout(loadMessages, 1500);
 						}
 					})
@@ -1217,6 +1238,7 @@ if (messageDetail) {
 					.then((r) => {
 						if (r.ok) {
 							currentAnswerId = messageId;
+							threadHasAnswer = true;
 							setTimeout(loadMessages, 1500);
 						}
 					})
@@ -1608,9 +1630,11 @@ if (messageDetail) {
 
 					const {
 						actions,
+						answerCount,
 						externalReferenceCode,
 						keywords,
 						locked,
+						messageCount,
 						priority,
 						question,
 						taxonomyCategoryBriefs,
@@ -1795,7 +1819,10 @@ if (messageDetail) {
 																	.labelUnsubscribedToast ||
 																'You have been unsubscribed from this message.';
 													Liferay.Util.openToast({
-														message: Liferay.Util.escapeHTML(toastMsg),
+														message:
+															Liferay.Util.escapeHTML(
+																toastMsg
+															),
 														title: Liferay.Util.escapeHTML(
 															messageDetail
 																.dataset
@@ -1861,9 +1888,7 @@ if (messageDetail) {
 								button.style.pointerEvents = 'none';
 
 								Liferay.Util.fetch(
-									portalURL +
-										'/o/c/c2m0threads/' +
-										messageId,
+									portalURL + '/o/c/c2m0threads/' + messageId,
 									{
 										body: JSON.stringify({
 											locked: newLocked,
@@ -1874,18 +1899,15 @@ if (messageDetail) {
 								)
 									.then((r) => {
 										if (!r.ok) {
-											throw new Error(
-												'HTTP ' + r.status
-											);
+											throw new Error('HTTP ' + r.status);
 										}
 
 										isThreadLocked = newLocked;
 										renderLockLabel(button);
 										updateLockedBanner();
 
-										const optionsMenu = button.closest(
-											'.dropdown-menu'
-										);
+										const optionsMenu =
+											button.closest('.dropdown-menu');
 										if (optionsMenu) {
 											optionsMenu.classList.remove(
 												'show'
@@ -1951,6 +1973,11 @@ if (messageDetail) {
 					isMessageQuestion = question === true;
 
 					/* Aggregation field, serialized as a string */
+					threadHasAnswer = parseInt(answerCount, 10) > 0;
+					threadMessageCount = parseInt(messageCount, 10) || 0;
+					threadExternalReferenceCode = externalReferenceCode;
+
+					/* Aggregation field, serialized as a string */
 					const isFlagged = parseInt(validatedFlagCount, 10) > 0;
 
 					if (isFlagged) {
@@ -1998,6 +2025,7 @@ if (messageDetail) {
 						const priorityBadgeHtml =
 							priorityBadge(messagePriority);
 						if (priorityBadgeHtml) {
+
 							// XSS: priorityBadgeHtml is escaped by Liferay.Util.escapeHTML in
 							// priorityBadge
 
@@ -2102,20 +2130,288 @@ if (messageDetail) {
 							});
 					}
 
-					/* Fetch messages for this message */
-					loadMessages();
+					/* Fetch messages for this message. On a reply's display
+					   page, open the reply page that holds it first. */
+					(targetReplyId
+						? findReplyPage(resolvedReply)
+								.then((page) => {
+									currentReplyPage = page;
+								})
+								.catch((error) => {
+									console.error(
+										'Reply page lookup error:',
+										error
+									);
+								})
+						: Promise.resolve()
+					).then(loadMessages);
 				})
 				.catch((error) => {
 					if (loadingEl) {
 						loadingEl.innerHTML =
 							'<div class="forums-message-list__empty text-secondary text-center py-5">' +
 							Liferay.Util.escapeHTML(
-								messageDetail.dataset.labelUnableToLoadMessage ||
+								messageDetail.dataset
+									.labelUnableToLoadMessage ||
 									'Unable to load message.'
 							) +
 							'</div>';
 					}
 					console.error('ForumsMessageDetail error:', error);
+				});
+		}
+
+		/* The accepted answer can sit on any page of the reply list, so fetch it
+		   on its own. Only questions with a non-zero answerCount have one. */
+		function fetchAcceptedAnswer() {
+			if (
+				!isMessageQuestion ||
+				!threadHasAnswer ||
+				!threadExternalReferenceCode
+			) {
+				return Promise.resolve(null);
+			}
+
+			return Liferay.Util.fetch(
+				portalURL +
+					'/o/c/c2m0messages/scopes/' +
+					scopeGroupId +
+					'?filter=' +
+					encodeURIComponent(
+						"r_threadMessages_c_c2m0ThreadERC eq '" +
+							threadExternalReferenceCode +
+							"' and answer eq true"
+					) +
+					'&pageSize=1&nestedFields=messageAttachments',
+				{
+					headers,
+					method: 'GET',
+				}
+			)
+				.then((r) => {
+					return r.json();
+				})
+				.then((data) => {
+					const [answerMessage] = (data && data.items) || [];
+
+					return answerMessage || null;
+				})
+				.catch((error) => {
+					console.error('Accepted answer error:', error);
+
+					return null;
+				});
+		}
+
+		/* The thread's message total, OP included. The first load uses the
+		   value from the thread itself; later loads (after a post, delete or
+		   answer change) read it again. */
+		function fetchThreadMessageCount() {
+			if (threadMessageCount !== null) {
+				const cachedCount = threadMessageCount;
+
+				threadMessageCount = null;
+
+				return Promise.resolve(cachedCount);
+			}
+
+			return Liferay.Util.fetch(
+				portalURL +
+					'/o/c/c2m0threads/' +
+					messageId +
+					'?fields=messageCount',
+				{
+					headers,
+					method: 'GET',
+				}
+			)
+				.then((r) => {
+					return r.json();
+				})
+				.then((data) => {
+					return parseInt(data && data.messageCount, 10) || 0;
+				})
+				.catch(() => {
+					return 0;
+				});
+		}
+
+		/* Nested replies of the given messages, level by level, so a page of
+		   top-level replies always renders with its whole subtree and a reply
+		   never lands on a different page than its parent. */
+		function fetchReplyDescendants(parents, depth) {
+			if (!parents.length || depth >= maxReplyDepth) {
+				return Promise.resolve([]);
+			}
+
+			const parentFilter = parents
+				.map(({id}) => {
+					return "r_messageReplies_c_c2m0MessageId eq '" + id + "'";
+				})
+				.join(' or ');
+
+			return Liferay.Util.fetch(
+				portalURL +
+					'/o/c/c2m0messages/scopes/' +
+					scopeGroupId +
+					'?filter=' +
+					encodeURIComponent(
+						"r_threadMessages_c_c2m0ThreadId eq '" +
+							messageId +
+							"' and (" +
+							parentFilter +
+							')'
+					) +
+					'&sort=dateCreated:asc&pageSize=-1' +
+					'&nestedFields=messageAttachments',
+				{
+					headers,
+					method: 'GET',
+				}
+			)
+				.then((r) => {
+					return r.json();
+				})
+				.then((data) => {
+					const children = (data && data.items) || [];
+
+					return fetchReplyDescendants(children, depth + 1).then(
+						(descendants) => {
+							return children.concat(descendants);
+						}
+					);
+				});
+		}
+
+		/* Filter for the paged list: the thread's top-level replies, the OP
+		   included. The accepted answer renders on its own, above the pages,
+		   so it is left out when there is one. */
+		function topLevelReplyFilter() {
+			let filter =
+				"r_threadMessages_c_c2m0ThreadId eq '" +
+				messageId +
+				"' and r_messageReplies_c_c2m0MessageId eq '0'";
+
+			if (isMessageQuestion && threadHasAnswer) {
+				filter += ' and answer eq false';
+			}
+
+			return filter;
+		}
+
+		function fetchReplyTreeNode(replyMessageId) {
+			return Liferay.Util.fetch(
+				portalURL +
+					'/o/c/c2m0messages/' +
+					replyMessageId +
+					'?fields=answer,id,r_messageReplies_c_c2m0MessageId',
+				{
+					headers,
+					method: 'GET',
+				}
+			).then((r) => {
+				return r.ok ? r.json() : null;
+			});
+		}
+
+		/* Walks up from a reply to its top-level reply. Stops early at the
+		   accepted answer, which renders with page 1 along with its replies. */
+		function findTopLevelReply(msg, depth) {
+			if (isMessageQuestion && threadHasAnswer && msg.answer === true) {
+				return Promise.resolve({message: msg, underAnswer: true});
+			}
+
+			const parentId = msg.r_messageReplies_c_c2m0MessageId;
+
+			if (!parentId || depth >= maxReplyDepth) {
+				return Promise.resolve({message: msg, underAnswer: false});
+			}
+
+			return fetchReplyTreeNode(parentId).then((parent) => {
+				if (!parent) {
+					return {message: msg, underAnswer: false};
+				}
+
+				return findTopLevelReply(parent, depth + 1);
+			});
+		}
+
+		/* The reply page that renders the targeted reply: the page holding its
+		   top-level reply, found by position in the same list the pages are
+		   cut from. Only ids are read, and only on a reply's display page. */
+		function findReplyPage(reply) {
+			return (
+				reply
+					? Promise.resolve(reply)
+					: fetchReplyTreeNode(targetReplyId)
+			)
+				.then((msg) => {
+					return msg ? findTopLevelReply(msg, 0) : null;
+				})
+				.then((result) => {
+					if (!result || result.underAnswer) {
+						return 1;
+					}
+
+					return Liferay.Util.fetch(
+						portalURL +
+							'/o/c/c2m0messages/scopes/' +
+							scopeGroupId +
+							'?filter=' +
+							encodeURIComponent(topLevelReplyFilter()) +
+							'&fields=id&pageSize=-1&sort=dateCreated:asc',
+						{
+							headers,
+							method: 'GET',
+						}
+					)
+						.then((r) => {
+							return r.json();
+						})
+						.then((data) => {
+							const items = (data && data.items) || [];
+
+							const index = items.findIndex(({id}) => {
+								return String(id) === String(result.message.id);
+							});
+
+							return index < 0
+								? 1
+								: Math.floor(index / replyPageSize) + 1;
+						});
+				});
+		}
+
+		function fetchOriginalPost() {
+			if (currentReplyPage === 1 || originalPostLoaded) {
+				return Promise.resolve(null);
+			}
+
+			return Liferay.Util.fetch(
+				portalURL +
+					'/o/c/c2m0messages/scopes/' +
+					scopeGroupId +
+					'?filter=' +
+					encodeURIComponent(topLevelReplyFilter()) +
+					'&sort=dateCreated:asc&page=1&pageSize=1' +
+					'&nestedFields=messageAttachments',
+				{
+					headers,
+					method: 'GET',
+				}
+			)
+				.then((r) => {
+					return r.json();
+				})
+				.then((data) => {
+					const [originalPost] = (data && data.items) || [];
+
+					return originalPost || null;
+				})
+				.catch((error) => {
+					console.error('Original post error:', error);
+
+					return null;
 				});
 		}
 
@@ -2130,32 +2426,81 @@ if (messageDetail) {
 				skeletonShownAt = Date.now();
 			}
 
-			Liferay.Util.fetch(
-				portalURL +
-					'/o/c/c2m0messages/scopes/' +
-					scopeGroupId +
-					'?filter=' +
-					encodeURIComponent(
-						"r_threadMessages_c_c2m0ThreadId eq '" +
-							messageId +
-							"'"
-					) +
-					'&sort=dateCreated:asc&page=' +
-					currentReplyPage +
-					'&pageSize=' +
-					replyPageSize +
-					'&nestedFields=messageAttachments',
-				{
-					headers,
-					method: 'GET',
-				}
-			)
-				.then((r) => {
+			let answerMessage = null;
+
+			/* Keep the accepted answer out of the paginated list so it is
+			   neither shown twice nor counted as a regular reply. Excluding it
+			   by answer instead of by id lets both requests run in parallel.
+			   ForumMessage.answer defaults to false, so every non-answer
+			   matches. */
+			const filter = topLevelReplyFilter();
+
+			let messageCount = 0;
+			let originalPostMessage = null;
+
+			/* Pages hold top-level replies only (the OP is the first one on
+			   page 1); their nested replies are loaded next, for this page. */
+			Promise.all([
+				fetchAcceptedAnswer(),
+				fetchThreadMessageCount(),
+				fetchOriginalPost(),
+				Liferay.Util.fetch(
+					portalURL +
+						'/o/c/c2m0messages/scopes/' +
+						scopeGroupId +
+						'?filter=' +
+						encodeURIComponent(filter) +
+						'&sort=dateCreated:asc&page=' +
+						currentReplyPage +
+						'&pageSize=' +
+						replyPageSize +
+						'&nestedFields=messageAttachments',
+					{
+						headers,
+						method: 'GET',
+					}
+				),
+			])
+				.then(([acceptedAnswer, threadCount, originalPost, r]) => {
+					answerMessage = acceptedAnswer;
+					messageCount = threadCount;
+					originalPostMessage = originalPost;
+
 					return r.json();
 				})
 				.then((data) => {
+					const topLevelMessages = data.items || [];
+
+					/* The accepted answer renders on its own, above the
+					   pages; replies to it load with page 1 so they show
+					   exactly once */
+					return fetchReplyDescendants(
+						answerMessage && currentReplyPage === 1
+							? topLevelMessages.concat(answerMessage)
+							: topLevelMessages,
+						0
+					).then((descendants) => {
+						/* The OP leads the list whenever it was fetched on
+						   its own, just as it leads page 1 */
+						return {
+							...data,
+							items: (originalPostMessage
+								? [originalPostMessage]
+								: []
+							).concat(
+								topLevelMessages,
+								descendants.filter(({id}) => {
+									return (
+										!answerMessage ||
+										id !== answerMessage.id
+									);
+								})
+							),
+						};
+					});
+				})
+				.then((data) => {
 					const messages = data.items || [];
-					const totalCount = data.totalCount || 0;
 					const lastPage = data.lastPage || 1;
 
 					if (!messages.length) {
@@ -2171,6 +2516,10 @@ if (messageDetail) {
 						messages.forEach((msg) => {
 							msg.actions = {};
 						});
+
+						if (answerMessage) {
+							answerMessage.actions = {};
+						}
 					}
 
 					/* HATEOAS: check if this user can create messages (reply).
@@ -2196,7 +2545,16 @@ if (messageDetail) {
 					const allMsgIds = messages.map((m) => {
 						return m.id;
 					});
-					fetchUserVotes(allMsgIds, () => {
+					if (answerMessage) {
+						replyMessagesMap[answerMessage.id] = answerMessage;
+						allMsgIds.push(answerMessage.id);
+					}
+
+					/* Render right away and apply the user's votes when they
+					   arrive: they only affect the vote buttons' state */
+					const userVotesPromise = fetchUserVotes(allMsgIds);
+
+					const renderMessages = () => {
 
 						/* Clear existing DOM structures to prevent artifacts */
 						if (solutionCards) {
@@ -2221,7 +2579,10 @@ if (messageDetail) {
 
 						messages.forEach((msg, index) => {
 							replyMessagesMap[msg.id] = msg;
-							if (currentReplyPage === 1 && index === 0) {
+							if (
+								index === 0 &&
+								(currentReplyPage === 1 || originalPostMessage)
+							) {
 								opMsg = msg;
 							}
 							else {
@@ -2231,12 +2592,14 @@ if (messageDetail) {
 
 						/* Render Original Post */
 						if (opMsg) {
+							originalPostLoaded = true;
+
 							const {
 								body: opMsgBody,
 								creator: opCreator,
 								dateCreated: opDateCreated,
 								id: opMsgId,
-								voteScore: opVoteScore,
+								voteTotal: opVoteTotal,
 							} = opMsg;
 							const creator = opCreator || {};
 							const {id: creatorId, image} = creator;
@@ -2250,6 +2613,7 @@ if (messageDetail) {
 								formatMarkupCodeBlocks(opBody);
 							}
 							if (opAttachments) {
+
 								// XSS: renderAttachments escapes each name with Liferay.Util.escapeHTML
 
 								opAttachments.innerHTML =
@@ -2302,6 +2666,7 @@ if (messageDetail) {
 										return `<span class="label label-lg forums-message-detail__tag"><span class="label-item label-item-expand">${Liferay.Util.escapeHTML(tag)}</span></span>`;
 									})
 									.join('');
+
 								// XSS: tagsHtml is escaped by Liferay.Util.escapeHTML where it is built
 
 								opTags.innerHTML = tagsHtml;
@@ -2324,7 +2689,7 @@ if (messageDetail) {
 								'#forumsDetailOPVote'
 							);
 							if (opVoteEl) {
-								const opScore = opVoteScore || 0;
+								const opScore = parseInt(opVoteTotal, 10) || 0;
 								const {voteValue: opVoteValue} =
 									userVoteMap[opMsgId] || {};
 								const opUpActive =
@@ -2539,6 +2904,7 @@ if (messageDetail) {
 												isMessageQuestion = newStatus;
 												if (!newStatus) {
 													currentAnswerId = null;
+													threadHasAnswer = false;
 												}
 												loadMessages();
 											}
@@ -2555,13 +2921,21 @@ if (messageDetail) {
 
 						/* Separate solutions from regular replies. Reset the tracked
 			   accepted-answer id first so a stale value from a previous load
-			   doesn't leak into the "Mark as Answer" button visibility. */
+			   doesn't leak into the "Mark as Answer" button visibility. The
+			   accepted answer is fetched separately and already excluded from
+			   the page, so a page match only happens if answerCount was stale. */
 						const solutions = [];
 						const regularReplies = [];
+						let pageSolutionCount = 0;
 						currentAnswerId = null;
+						if (answerMessage) {
+							solutions.push(answerMessage);
+							currentAnswerId = answerMessage.id;
+						}
 						replyMessages.forEach((msg) => {
 							if (isMessageQuestion && msg.answer === true) {
 								solutions.push(msg);
+								pageSolutionCount++;
 								currentAnswerId = msg.id;
 							}
 							else {
@@ -2583,6 +2957,7 @@ if (messageDetail) {
 								solHtml += renderReplyCard(sol, true, 0);
 							});
 							if (solutionCards) {
+
 								// XSS: solHtml is sanitized by sanitizeHTML and escaped by
 								// Liferay.Util.escapeHTML in renderReplyCard
 
@@ -2592,8 +2967,11 @@ if (messageDetail) {
 						}
 
 						/* Render regular replies as a messageed tree */
+
+						/* Every message but the OP and the answers shown above;
+						   totalCount only counts this page's top-level replies */
 						let regularReplyCount =
-							totalCount - 1 - solutions.length;
+							messageCount - 1 - solutions.length;
 						if (regularReplyCount < 0) {
 							regularReplyCount = 0;
 						}
@@ -2621,6 +2999,7 @@ if (messageDetail) {
 								opId
 							);
 							if (replyCards) {
+
 								// XSS: repHtml is sanitized by sanitizeHTML and escaped by
 								// Liferay.Util.escapeHTML in renderReplyCard
 
@@ -2725,14 +3104,25 @@ if (messageDetail) {
 									);
 								});
 						}
-					}); /* end fetchUserVotes callback */
+					}; /* end renderMessages */
+
+					renderMessages();
+
+					userVotesPromise
+						.then(() => {
+							allMsgIds.forEach(renderVoteButtons);
+						})
+						.catch((error) => {
+							console.error('Vote buttons error:', error);
+						});
 				})
 				.catch((error) => {
 					if (loadingEl) {
 						loadingEl.innerHTML =
 							'<div class="forums-message-list__empty text-secondary text-center py-5">' +
 							Liferay.Util.escapeHTML(
-								messageDetail.dataset.labelUnableToLoadMessages ||
+								messageDetail.dataset
+									.labelUnableToLoadMessages ||
 									'Unable to load messages.'
 							) +
 							'</div>';
@@ -2991,9 +3381,26 @@ if (messageDetail) {
 			});
 		}
 
-		if (Liferay.ThemeDisplay.isSignedIn()) {
-			/* A ban is the Forum Banned site role held in this site. */
-			const banStatusPromise = Promise.all([
+		banStatusPromise
+			.then((banData) => {
+				if (banData.banned) {
+					isBanned = true;
+				}
+				isModerator = !isBanned && !!banData.moderator;
+
+				initMessageDetail();
+			})
+			.catch((error) => {
+				console.error('ForumsMessageDetail error:', error);
+			});
+	}; // end runMessageDetail
+
+	/* A ban is the Forum Banned site role held in this site. The check
+	   does not depend on the thread, so start it before the thread lookup
+	   below instead of after it. */
+	const banStatusPromise = !Liferay.ThemeDisplay.isSignedIn()
+		? Promise.resolve({})
+		: Promise.all([
 				forumsSharedFetch(
 					portalURL +
 						'/o/headless-admin-user/v1.0/my-user-account?fields=siteBriefs',
@@ -3030,7 +3437,9 @@ if (messageDetail) {
 							),
 						moderator: !!(
 							role.actions &&
-							role.actions['create-site-role-user-account-association']
+							role.actions[
+								'create-site-role-user-account-association'
+							]
 						),
 					};
 				})
@@ -3039,20 +3448,6 @@ if (messageDetail) {
 
 					return {};
 				});
-
-			banStatusPromise.then((banData) => {
-				if (banData.banned) {
-					isBanned = true;
-				}
-				isModerator = !isBanned && !!banData.moderator;
-
-				initMessageDetail();
-			});
-		}
-		else {
-			initMessageDetail();
-		}
-	}; // end runMessageDetail
 
 	/* Resolve messageId: ?messageId param → mapped reply ERC → mapped message ERC → URL path slug */
 	if (messageId) {
@@ -3091,7 +3486,9 @@ if (messageDetail) {
 						reply.r_threadMessages_c_c2m0ThreadId;
 					runMessageDetail(
 						parentMessageId ? String(parentMessageId) : null,
-						reply.id ? String(reply.id) : null
+						reply.id ? String(reply.id) : null,
+						null,
+						reply
 					);
 				})
 				.catch(() => {
