@@ -5,6 +5,43 @@
 
 /* global CKEDITOR, fragmentElementId */
 
+/* The forums fragments on one page load some of the same resources (the
+   user's site roles, the Forum Banned role, the current thread). Share one
+   GET per URL across them for the life of the page; every caller gets its
+   own Response, so bodies can be read and mutated independently. */
+const forumsSharedFetch = function (url, options) {
+	if (!window.forumsSharedFetchCache) {
+		window.forumsSharedFetchCache = {};
+
+		Liferay.once('beforeNavigate', () => {
+			delete window.forumsSharedFetchCache;
+		});
+	}
+
+	const cache = window.forumsSharedFetchCache;
+
+	if (!cache[url]) {
+		cache[url] = Liferay.Util.fetch(url, options)
+			.then((response) => {
+				return response.text().then((text) => {
+					return {status: response.status, text};
+				});
+			})
+			.catch((error) => {
+				delete cache[url];
+
+				throw error;
+			});
+	}
+
+	return cache[url].then(({status, text}) => {
+		return new Response(
+			[204, 205, 304].includes(status) ? null : text,
+			{headers: {'Content-Type': 'application/json'}, status}
+		);
+	});
+};
+
 const messageComposer = fragmentElement.querySelector('#forumsMessageComposer');
 
 /* Category query string. pageSize and sort come from fragment configuration;
@@ -505,8 +542,8 @@ if (messageComposer) {
 
 	/* Thread priority (Message Boards parity). Whether the priority select is
 	   offered is gated the same way the moderation page detects moderators: the
-	   HATEOAS create action on the ForumBan collection, which regular users are
-	   never granted. Like ban enforcement, this is UI-only — see the README. */
+	   HATEOAS action to assign the Forum Banned site role, which regular users
+	   are never granted. Like ban enforcement, this is UI-only — see the README. */
 	let canSetPriority = false;
 
 	/* True while the form is in a mode where priority applies (new topic or
@@ -522,26 +559,41 @@ if (messageComposer) {
 	};
 
 	if (Liferay.ThemeDisplay.isSignedIn()) {
-		Liferay.Util.fetch(
-			portalURL +
-				'/o/c/c2m0bans/scopes/' +
-				scopeGroupId +
-				'?filter=' +
-				encodeURIComponent(
-					"bannedUserId eq '" + currentUserId + "'"
-				) +
-				'&pageSize=1',
-			{
-				headers,
-				method: 'GET',
-			}
-		)
-			.then((r) => {
+
+		/* A ban is the Forum Banned site role held in this site. */
+		Promise.all([
+			forumsSharedFetch(
+				portalURL +
+					'/o/headless-admin-user/v1.0/my-user-account?fields=siteBriefs',
+				{
+					headers,
+					method: 'GET',
+				}
+			).then((r) => {
 				return r.json();
-			})
-			.then((data) => {
-				const {actions, items} = data;
-				if (items && !!items.length) {
+			}),
+			forumsSharedFetch(
+				portalURL +
+					'/o/headless-admin-user/v1.0/roles/by-external-reference-code/FORUM_BANNED',
+				{
+					headers,
+					method: 'GET',
+				}
+			).then((r) => {
+				return r.ok ? r.json() : {};
+			}),
+		])
+			.then(([userAccount, role]) => {
+				const siteBrief = (userAccount.siteBriefs || []).find(
+					(site) => String(site.id) === String(scopeGroupId)
+				);
+				if (
+					siteBrief &&
+					(siteBrief.roleBriefs || []).some(
+						(roleBrief) =>
+							roleBrief.externalReferenceCode === 'FORUM_BANNED'
+					)
+				) {
 					isBanned = true;
 					if (submitBtn) {
 						submitBtn.disabled = true;
@@ -556,10 +608,8 @@ if (messageComposer) {
 				canSetPriority =
 					!isBanned &&
 					!!(
-						actions &&
-						(actions['create'] ||
-							actions['post'] ||
-							actions['POST'])
+						role.actions &&
+						role.actions['create-site-role-user-account-association']
 					);
 				syncPriorityGroup();
 			})
@@ -751,7 +801,7 @@ if (messageComposer) {
 
 	/* ---- Configure form for new-message vs reply mode ---- */
 
-	const configureModal = function (replyMode) {
+	const configureModal = function (replyMode, deferCategories) {
 		priorityApplicable =
 			(isEditMode && editIsOp) || (!isEditMode && !replyMode);
 		syncPriorityGroup();
@@ -786,7 +836,9 @@ if (messageComposer) {
 				submitBtn.textContent =
 					messageComposer.dataset.labelSave || 'Save';
 			}
-			loadCategories();
+			if (!deferCategories) {
+				loadCategories();
+			}
 		}
 		else if (isEditMode && !editIsOp) {
 			if (titleEl) {
@@ -890,22 +942,21 @@ if (messageComposer) {
 				submitBtn.textContent =
 					messageComposer.dataset.labelPost || 'Post';
 			}
-			loadCategories();
+			if (!deferCategories) {
+				loadCategories();
+			}
 		}
 	};
 
-	/* Load categories into dropdown (only once) */
-	const loadCategories = function () {
-		if (categoriesLoaded) {
-			return;
-		}
-		categoriesLoaded = true;
-
-		Liferay.Util.fetch(
+	/* Categories live in the site scoped "Forum Categories" Vocabulary,
+	   created on demand by forums-categories-admin. Look it up by name; if it
+	   does not exist yet, there are no categories to offer. */
+	const loadVocabularyCategories = function () {
+		return Liferay.Util.fetch(
 			portalURL +
-				'/o/c/c2m0categories/scopes/' +
+				'/o/headless-admin-taxonomy/v1.0/sites/' +
 				scopeGroupId +
-				categoryQuery(messageComposer.dataset),
+				'/taxonomy-vocabularies?pageSize=100',
 			{
 				headers,
 				method: 'GET',
@@ -915,12 +966,54 @@ if (messageComposer) {
 				return r.json();
 			})
 			.then((data) => {
+				const vocabulary = (data.items || []).find((item) => {
+					return item.name === 'Forum Categories';
+				});
+
+				if (!vocabulary) {
+					return {items: []};
+				}
+
+				return Liferay.Util.fetch(
+					portalURL +
+						'/o/headless-admin-taxonomy/v1.0/taxonomy-vocabularies/' +
+						vocabulary.id +
+						'/taxonomy-categories?flatten=true' +
+						categoryQuery(messageComposer.dataset).replace(
+							'?',
+							'&'
+						),
+					{
+						headers,
+						method: 'GET',
+					}
+				).then((r) => {
+					return r.json();
+				});
+			});
+	};
+
+	/* Load categories into dropdown (only once) */
+	const loadCategories = function () {
+		if (categoriesLoaded) {
+			return;
+		}
+		categoriesLoaded = true;
+
+		loadVocabularyCategories()
+			.then((data) => {
 				const items = data.items || [];
 
 				/* Group subcategories under their parent so the structure is
 			   visible. Posting into a parent stays valid — a parent lists only
 			   its own topics, so it must remain a usable target. */
-				const PARENT_FK = 'r_categorySubcategories_c_c2m0CategoryId';
+				const getParentId = function (cat) {
+					return (
+						(cat.parentTaxonomyCategory &&
+							cat.parentTaxonomyCategory.id) ||
+						0
+					);
+				};
 
 				const byId = {};
 				items.forEach((cat) => {
@@ -929,7 +1022,7 @@ if (messageComposer) {
 
 				const childrenOf = {};
 				items.forEach((cat) => {
-					let pid = Number(cat[PARENT_FK]) || 0;
+					let pid = getParentId(cat);
 					if (pid && !byId[pid]) {
 						pid = 0;
 					}
@@ -970,7 +1063,6 @@ if (messageComposer) {
 	window.forumsOpenComposeModal = function ({
 		body,
 		categoryId,
-		duplicate,
 		editMode,
 		isOp,
 		isQuestion,
@@ -1053,53 +1145,6 @@ if (messageComposer) {
 				}
 			}
 		}
-		else if (duplicate) {
-
-			/* Duplicate a topic: prefill the plain "new topic" form (not edit
-			   mode, so submitting creates a brand-new thread + message) with a
-			   copy of the source topic's content for the user to review before
-			   posting. */
-			if (subjectInput && subject) {
-				subjectInput.value = subject;
-			}
-			if (questionCheck && isQuestion !== undefined) {
-				questionCheck.checked = isQuestion;
-			}
-			if (prioritySelect) {
-				const priorityValue = String(
-					Math.round(parseFloat(priority)) || 0
-				);
-				prioritySelect.value = priorityValue;
-				if (prioritySelect.value !== priorityValue) {
-					prioritySelect.value = '0';
-				}
-			}
-			if (tags && Array.isArray(tags)) {
-				tagsArray = [].concat(tags);
-				renderTags();
-			}
-			if (body && bodyEditorInstance) {
-				bodyEditorInstance.setData(body);
-			}
-			else if (body) {
-				editorPromise
-					.then((editor) => {
-						editor.setData(body);
-					})
-					.catch(() => {});
-			}
-			if (categoryId && categorySelect) {
-				if (!categoriesLoaded) {
-					loadCategories();
-					setTimeout(() => {
-						categorySelect.value = String(categoryId);
-					}, 500);
-				}
-				else {
-					categorySelect.value = String(categoryId);
-				}
-			}
-		}
 		else if (!replyMode && categoryId && categorySelect) {
 			categorySelect.value = String(categoryId);
 		}
@@ -1144,8 +1189,10 @@ if (messageComposer) {
 		}
 	});
 
-	/* Initial configuration */
-	configureModal(isReplyMode);
+	/* Initial configuration. A modal composer is hidden until opened, and
+	   opening it configures it again, so its categories load then instead of
+	   on every page the composer sits on. */
+	configureModal(isReplyMode, formMode !== 'page');
 
 	/* SPA-friendly navigation helper */
 	const spaNavigate = function (url) {
@@ -1203,6 +1250,13 @@ if (messageComposer) {
 			const parsedBody = new DOMParser().parseFromString(body, 'text/html');
 			const textContent = parsedBody.body.textContent || '';
 
+			/* Listing excerpt stored on the thread, so the listing does not
+			   have to load the topic's messages */
+			let preview = textContent.trim().replace(/\s+/g, ' ');
+			if (preview.length > 160) {
+				preview = preview.substring(0, 160) + '...';
+			}
+
 			if (!textContent.trim()) {
 				if (bodyError) {
 					bodyError.style.display = 'block';
@@ -1254,11 +1308,11 @@ if (messageComposer) {
 				if (editIsOp) {
 					const threadPatchPayload = {
 						keywords: tagsArray,
+						preview,
 						question: isQuestion,
-						r_categoryThreads_c_c2m0CategoryId: parseInt(
-							selectedCategory,
-							10
-						),
+						taxonomyCategoryIds: [
+							parseInt(selectedCategory, 10),
+						],
 						title: subject,
 						title_i18n: {[defaultLanguageId]: subject},
 					};
@@ -1290,8 +1344,6 @@ if (messageComposer) {
 							{
 								body: JSON.stringify({
 									body,
-									r_categoryThreads_c_c2m0CategoryId:
-										parseInt(selectedCategory, 10),
 									subject,
 									subject_i18n: {
 										[defaultLanguageId]: subject,
@@ -1448,15 +1500,13 @@ if (messageComposer) {
 
 				const messagePayload = {
 					keywords: tagsArray,
+					preview,
 					priority:
 						canSetPriority && prioritySelect
 							? parseFloat(prioritySelect.value) || 0
 							: 0,
 					question: isQuestion,
-					r_categoryThreads_c_c2m0CategoryId: parseInt(
-						selectedCategory,
-						10
-					),
+					taxonomyCategoryIds: [parseInt(selectedCategory, 10)],
 					title: subject,
 					title_i18n: {[defaultLanguageId]: subject},
 				};
@@ -1482,10 +1532,6 @@ if (messageComposer) {
 						const msgPayload = {
 							body,
 							format: 'html',
-							r_categoryThreads_c_c2m0CategoryId: parseInt(
-								selectedCategory,
-								10
-							),
 							r_threadMessages_c_c2m0ThreadId: threadId,
 							subject,
 							subject_i18n: {[defaultLanguageId]: subject},

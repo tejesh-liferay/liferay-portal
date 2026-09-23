@@ -1,8 +1,8 @@
 liferay-forums-site-initializer:
     name: Liferay Forums Site Initializer
     oAuthApplicationHeadlessServer: liferay-forums-site-initializer-oahs
-    siteExternalReferenceCode: LIFERAY_RAY
-    siteName: RAY
+    siteExternalReferenceCode: LIFERAY_FORUMS
+    siteName: FORUMS
     type: siteInitializer
 liferay-forums-site-initializer-oahs:
     .serviceAddress: localhost:8080

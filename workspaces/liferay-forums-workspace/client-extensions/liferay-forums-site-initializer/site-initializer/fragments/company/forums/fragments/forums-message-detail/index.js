@@ -3,6 +3,43 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
+/* The forums fragments on one page load some of the same resources (the
+   user's site roles, the Forum Banned role, the current thread). Share one
+   GET per URL across them for the life of the page; every caller gets its
+   own Response, so bodies can be read and mutated independently. */
+const forumsSharedFetch = function (url, options) {
+	if (!window.forumsSharedFetchCache) {
+		window.forumsSharedFetchCache = {};
+
+		Liferay.once('beforeNavigate', () => {
+			delete window.forumsSharedFetchCache;
+		});
+	}
+
+	const cache = window.forumsSharedFetchCache;
+
+	if (!cache[url]) {
+		cache[url] = Liferay.Util.fetch(url, options)
+			.then((response) => {
+				return response.text().then((text) => {
+					return {status: response.status, text};
+				});
+			})
+			.catch((error) => {
+				delete cache[url];
+
+				throw error;
+			});
+	}
+
+	return cache[url].then(({status, text}) => {
+		return new Response(
+			[204, 205, 304].includes(status) ? null : text,
+			{headers: {'Content-Type': 'application/json'}, status}
+		);
+	});
+};
+
 const messageDetail = fragmentElement.querySelector('#forumsMessageDetail');
 
 if (messageDetail) {
@@ -319,7 +356,13 @@ if (messageDetail) {
 		closeReplyOptionMenus(null);
 	});
 
-	const runMessageDetail = function (resolvedMessageId, replyId) {
+	/* resolvedThread is the thread when the caller already loaded it (the
+	   mapped ERC lookup returns the full entry), so it is not fetched again */
+	const runMessageDetail = function (
+		resolvedMessageId,
+		replyId,
+		resolvedThread
+	) {
 		messageId = resolvedMessageId;
 		const targetReplyId = replyId || null;
 		let skeletonShownAt = Date.now();
@@ -342,16 +385,10 @@ if (messageDetail) {
 		let isBanned = false;
 
 		/* Whether the current user may lock/unlock this topic. Gated the same
-		   way the moderation page detects moderators: the HATEOAS create action
-		   on the ForumBan collection, which regular users are never granted. */
+		   way the moderation page detects moderators: the HATEOAS action to
+		   assign the Forum Banned site role, which regular users are never
+		   granted. */
 		let isModerator = false;
-
-		/* Whether the current user may create a new thread — the same HATEOAS
-		   create action the New Discussion button (forums-hero /
-		   forums-message-list) checks on the ForumThreads collection. Drives
-		   visibility of the "Duplicate Topic" option, which posts a copy of
-		   this topic as a brand-new thread. */
-		let canCreateThread = false;
 
 		/* Whether replies/edits are currently blocked on this topic. Set from
 		   the thread's own "locked" field once it loads; the server enforces
@@ -1547,19 +1584,18 @@ if (messageDetail) {
 				}
 			}
 
-			Liferay.Util.fetch(
-				portalURL +
-					'/o/c/c2m0threads/' +
-					messageId +
-					'?nestedFields=threadSuspiciousActivities',
-				{
-					headers,
-					method: 'GET',
-				}
+			(resolvedThread
+				? Promise.resolve(resolvedThread)
+				: forumsSharedFetch(
+						portalURL + '/o/c/c2m0threads/' + messageId,
+						{
+							headers,
+							method: 'GET',
+						}
+					).then((r) => {
+						return r.json();
+					})
 			)
-				.then((r) => {
-					return r.json();
-				})
 				.then((msg) => {
 					if (isBanned) {
 						if (msg.actions) {
@@ -1577,9 +1613,9 @@ if (messageDetail) {
 						locked,
 						priority,
 						question,
-						r_categoryThreads_c_c2m0CategoryId,
-						threadSuspiciousActivities,
+						taxonomyCategoryBriefs,
 						title: messageTitle,
+						validatedFlagCount,
 					} = msg;
 
 					isThreadLocked = !!locked;
@@ -1914,15 +1950,8 @@ if (messageDetail) {
 
 					isMessageQuestion = question === true;
 
-					let isFlagged = false;
-					const suspiciousActivities =
-						threadSuspiciousActivities || [];
-					for (const {validated} of suspiciousActivities) {
-						if (validated === true) {
-							isFlagged = true;
-							break;
-						}
-					}
+					/* Aggregation field, serialized as a string */
+					const isFlagged = parseInt(validatedFlagCount, 10) > 0;
 
 					if (isFlagged) {
 						let flaggedBanner = messageDetail.querySelector(
@@ -1954,7 +1983,11 @@ if (messageDetail) {
 						messageTitle ||
 						messageDetail.dataset.labelUntitledMessage ||
 						'Untitled Message';
-					messageCategoryFK = r_categoryThreads_c_c2m0CategoryId;
+					const categoryBrief =
+						(taxonomyCategoryBriefs || [])[0] || null;
+					messageCategoryFK = categoryBrief
+						? categoryBrief.taxonomyCategoryId
+						: null;
 					messagePriority = priority || 0;
 					messageTagsArray = keywords || [];
 					const title = messageTitleText;
@@ -1978,49 +2011,38 @@ if (messageDetail) {
 						breadcrumbMessage.textContent = title;
 					}
 
-					/* Fetch category for breadcrumb */
-					if (categoryFK) {
-						Liferay.Util.fetch(
-							portalURL + '/o/c/c2m0categories/' + categoryFK,
-							{
-								headers,
-								method: 'GET',
-							}
-						)
-							.then((r) => {
-								return r.json();
-							})
-							.then((cat) => {
-								const catName =
-									cat.name ||
-									messageDetail.dataset.labelCategory ||
-									'Category';
-								const messagesHref =
-									sitePrefix +
-									(typeof configuration !== 'undefined' &&
-									configuration.messagesURL
-										? configuration.messagesURL
-										: '/forums-messages');
-								const catURL =
-									messagesHref + '?categoryId=' + categoryFK;
+					/* Populate the breadcrumb from the entry's own
+					   taxonomyCategoryBriefs — no separate fetch needed, the
+					   category's name travels with the thread. */
+					if (categoryBrief) {
+						const catName =
+							categoryBrief.taxonomyCategoryName ||
+							messageDetail.dataset.labelCategory ||
+							'Category';
+						const messagesHref =
+							sitePrefix +
+							(typeof configuration !== 'undefined' &&
+							configuration.messagesURL
+								? configuration.messagesURL
+								: '/forums-messages');
+						const catURL =
+							messagesHref + '?categoryId=' + categoryFK;
 
-								if (breadcrumbCategory) {
-									breadcrumbCategory.textContent = catName;
-									breadcrumbCategory.href = catURL;
-								}
+						if (breadcrumbCategory) {
+							breadcrumbCategory.textContent = catName;
+							breadcrumbCategory.href = catURL;
+						}
 
-								/* Also populate the bottom category link */
-								if (categoryLink) {
-									const labelText = (
-										messageDetail.dataset.labelBackToX ||
-										'Back to {0}'
-									).replace('{0}', catName);
-									categoryLink.textContent = labelText;
-									categoryLink.href = catURL;
-									categoryLink.style.display = '';
-								}
-							})
-							.catch(() => {});
+						/* Also populate the bottom category link */
+						if (categoryLink) {
+							const labelText = (
+								messageDetail.dataset.labelBackToX ||
+								'Back to {0}'
+							).replace('{0}', catName);
+							categoryLink.textContent = labelText;
+							categoryLink.href = catURL;
+							categoryLink.style.display = '';
+						}
 					}
 
 					/* Check if the current user has already flagged this message (dedup) */
@@ -2387,49 +2409,6 @@ if (messageDetail) {
 							}
 							else if (dropdownEditBtn) {
 								dropdownEditBtn.style.display = 'none';
-							}
-
-							/* Duplicate Topic: opens the shared composer in
-					   plain "new topic" mode (no threadId/editMode), prefilled
-					   with a copy of this topic's content, so the visitor can
-					   review/edit before posting it as a brand-new thread.
-					   Gated on the same "may I create a thread" HATEOAS check
-					   the New Discussion button uses (canCreateThread) rather
-					   than on ownership of this topic — anyone who can start a
-					   new discussion may duplicate one. */
-							const dropdownDuplicateBtn =
-								messageDetail.querySelector(
-									'#forumsDetailDuplicateBtn'
-								);
-							if (dropdownDuplicateBtn && canCreateThread) {
-								dropdownDuplicateBtn.style.display = '';
-
-								const newDropdownDuplicateBtn =
-									dropdownDuplicateBtn.cloneNode(true);
-								dropdownDuplicateBtn.parentNode.replaceChild(
-									newDropdownDuplicateBtn,
-									dropdownDuplicateBtn
-								);
-								newDropdownDuplicateBtn.addEventListener(
-									'click',
-									(event) => {
-										event.preventDefault();
-										if (window.forumsOpenComposeModal) {
-											window.forumsOpenComposeModal({
-												body: opMsgBody,
-												categoryId: messageCategoryFK,
-												duplicate: true,
-												isQuestion: isMessageQuestion,
-												priority: messagePriority,
-												subject: messageTitleText,
-												tags: messageTagsArray,
-											});
-										}
-									}
-								);
-							}
-							else if (dropdownDuplicateBtn) {
-								dropdownDuplicateBtn.style.display = 'none';
 							}
 
 							const dropdownDeleteBtn =
@@ -3013,22 +2992,47 @@ if (messageDetail) {
 		}
 
 		if (Liferay.ThemeDisplay.isSignedIn()) {
-			const banStatusPromise = Liferay.Util.fetch(
-				portalURL +
-					'/o/c/c2m0bans/scopes/' +
-					scopeGroupId +
-					'?filter=' +
-					encodeURIComponent(
-						"bannedUserId eq '" + currentUserId + "'"
-					) +
-					'&pageSize=1',
-				{
-					headers,
-					method: 'GET',
-				}
-			)
-				.then((r) => {
+			/* A ban is the Forum Banned site role held in this site. */
+			const banStatusPromise = Promise.all([
+				forumsSharedFetch(
+					portalURL +
+						'/o/headless-admin-user/v1.0/my-user-account?fields=siteBriefs',
+					{
+						headers,
+						method: 'GET',
+					}
+				).then((r) => {
 					return r.json();
+				}),
+				forumsSharedFetch(
+					portalURL +
+						'/o/headless-admin-user/v1.0/roles/by-external-reference-code/FORUM_BANNED',
+					{
+						headers,
+						method: 'GET',
+					}
+				).then((r) => {
+					return r.ok ? r.json() : {};
+				}),
+			])
+				.then(([userAccount, role]) => {
+					const siteBrief = (userAccount.siteBriefs || []).find(
+						(site) => String(site.id) === String(scopeGroupId)
+					);
+
+					return {
+						banned:
+							!!siteBrief &&
+							(siteBrief.roleBriefs || []).some(
+								(roleBrief) =>
+									roleBrief.externalReferenceCode ===
+									'FORUM_BANNED'
+							),
+						moderator: !!(
+							role.actions &&
+							role.actions['create-site-role-user-account-association']
+						),
+					};
 				})
 				.catch((error) => {
 					console.error('Error checking ban status', error);
@@ -3036,53 +3040,14 @@ if (messageDetail) {
 					return {};
 				});
 
-			/* Same HATEOAS check the New Discussion button uses — resolved up
-			   front, in parallel, so it is ready by the time the OP renders
-			   and decides whether to show "Duplicate Topic". */
-			const canCreateThreadPromise = Liferay.Util.fetch(
-				portalURL +
-					'/o/c/c2m0threads/scopes/' +
-					scopeGroupId +
-					'?page=1&pageSize=1',
-				{
-					headers,
-					method: 'GET',
+			banStatusPromise.then((banData) => {
+				if (banData.banned) {
+					isBanned = true;
 				}
-			)
-				.then((r) => {
-					return r.json();
-				})
-				.catch(() => {
-					return {};
-				});
+				isModerator = !isBanned && !!banData.moderator;
 
-			Promise.all([banStatusPromise, canCreateThreadPromise]).then(
-				([banData, threadData]) => {
-					if (banData.items && !!banData.items.length) {
-						isBanned = true;
-					}
-					const {actions} = banData;
-					isModerator =
-						!isBanned &&
-						!!(
-							actions &&
-							(actions['create'] ||
-								actions['post'] ||
-								actions['POST'])
-						);
-
-					const threadActions = threadData && threadData.actions;
-					canCreateThread =
-						!isBanned &&
-						!!(
-							threadActions &&
-							(threadActions['post'] ||
-								threadActions['create'])
-						);
-
-					initMessageDetail();
-				}
-			);
+				initMessageDetail();
+			});
 		}
 		else {
 			initMessageDetail();
@@ -3103,7 +3068,7 @@ if (messageDetail) {
 		}
 
 		if (replyErc) {
-			Liferay.Util.fetch(
+			forumsSharedFetch(
 				portalURL +
 					'/o/c/c2m0messages/scopes/' +
 					scopeGroupId +
@@ -3152,7 +3117,7 @@ if (messageDetail) {
 				}
 			}
 			else {
-				Liferay.Util.fetch(
+				forumsSharedFetch(
 					portalURL +
 						'/o/c/c2m0threads/scopes/' +
 						scopeGroupId +
@@ -3173,7 +3138,8 @@ if (messageDetail) {
 					.then((data) => {
 						runMessageDetail(
 							data.id ? String(data.id) : null,
-							null
+							null,
+							data
 						);
 					})
 					.catch(() => {

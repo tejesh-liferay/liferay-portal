@@ -12,5 +12,16 @@
 			"en_US": "Forum Category Admin"
 		},
 		"type": 1
+	},
+	{
+		"description": {
+			"en_US": "Members of this site role are banned from posting in the forums of the site."
+		},
+		"externalReferenceCode": "FORUM_BANNED",
+		"name": "Forum Banned",
+		"name_i18n": {
+			"en_US": "Forum Banned"
+		},
+		"type": 2
 	}
 ]

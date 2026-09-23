@@ -128,7 +128,7 @@ public class ObjectValidationRuleRestController extends BaseRestController {
 
 		long creatorUserId = _resolveCreatorUserId(payloadJSONObject);
 
-		boolean allowed = _forumModerationService.canAddForumBan(
+		boolean allowed = _forumModerationService.canModerateForum(
 			creatorUserId, authToken);
 
 		if (!allowed && _log.isInfoEnabled()) {

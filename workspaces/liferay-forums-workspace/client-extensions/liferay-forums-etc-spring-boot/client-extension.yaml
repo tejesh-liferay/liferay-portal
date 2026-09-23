@@ -9,7 +9,6 @@ liferay-forums-etc-spring-boot-oahs:
         -   Liferay.Headless.Admin.User.everything.read
         -   Liferay.Notification.REST.everything
         -   Liferay.Object.Admin.REST.everything.read
-        -   c_c2m0ban.everything.read
         -   c_c2m0message.everything
         -   c_c2m0subscription.everything.read
         -   c_c2m0suspiciousactivity.everything

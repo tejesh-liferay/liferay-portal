@@ -3,6 +3,43 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
+/* The forums fragments on one page load some of the same resources (the
+   user's site roles, the Forum Banned role, the current thread). Share one
+   GET per URL across them for the life of the page; every caller gets its
+   own Response, so bodies can be read and mutated independently. */
+const forumsSharedFetch = function (url, options) {
+	if (!window.forumsSharedFetchCache) {
+		window.forumsSharedFetchCache = {};
+
+		Liferay.once('beforeNavigate', () => {
+			delete window.forumsSharedFetchCache;
+		});
+	}
+
+	const cache = window.forumsSharedFetchCache;
+
+	if (!cache[url]) {
+		cache[url] = Liferay.Util.fetch(url, options)
+			.then((response) => {
+				return response.text().then((text) => {
+					return {status: response.status, text};
+				});
+			})
+			.catch((error) => {
+				delete cache[url];
+
+				throw error;
+			});
+	}
+
+	return cache[url].then(({status, text}) => {
+		return new Response(
+			[204, 205, 304].includes(status) ? null : text,
+			{headers: {'Content-Type': 'application/json'}, status}
+		);
+	});
+};
+
 const messageList = fragmentElement.querySelector('#forumsMessageList');
 
 /* Category query string. pageSize and sort come from fragment configuration;
@@ -68,12 +105,11 @@ if (messageList) {
 	let categoryId = null;
 	let searchQuery = '';
 	let tagFilter = null;
-	const currentUserId = Liferay.ThemeDisplay.getUserId();
 	let isBanned = false;
 
 	/* Whether the current user may lock/unlock a topic. Gated the same way
-	   the moderation page detects moderators: the HATEOAS create action on
-	   the ForumBan collection, which regular users are never granted. */
+	   the moderation page detects moderators: the HATEOAS action to assign
+	   the Forum Banned site role, which regular users are never granted. */
 	let isModerator = false;
 
 	/* DOM refs */
@@ -126,9 +162,6 @@ if (messageList) {
 
 	/* Collapsed subcategory box shows exactly two rows; expanded shows all */
 	let subcatsExpanded = false;
-
-	/* FK exposed by the ForumCategory self-relationship (0 / absent = top-level) */
-	const PARENT_FK = 'r_categorySubcategories_c_c2m0CategoryId';
 
 	/* Subcategories are capped at ONE level — see MAX_DEPTH in
 	   forums-categories-admin. Kept as a constant, never a setting. */
@@ -433,7 +466,7 @@ if (messageList) {
 	/* --- Category hierarchy -------------------------------------------- */
 
 	const getParentId = function (cat) {
-		return Number(cat[PARENT_FK]) || 0;
+		return (cat.parentTaxonomyCategory && cat.parentTaxonomyCategory.id) || 0;
 	};
 
 	/* Link to another category on this same page */
@@ -730,13 +763,14 @@ if (messageList) {
 		subcatsResizeTimer = setTimeout(applySubcategoryCollapse, 150);
 	});
 
-	/* One fetch drives the breadcrumb, the filter dropdown and the
-	   subcategory cards. */
+	/* Categories live in the site scoped "Forum Categories" Vocabulary,
+	   created on demand by forums-categories-admin. One fetch drives the
+	   breadcrumb, the filter dropdown and the subcategory cards. */
 	Liferay.Util.fetch(
 		portalURL +
-			'/o/c/c2m0categories/scopes/' +
+			'/o/headless-admin-taxonomy/v1.0/sites/' +
 			scopeGroupId +
-			categoryQuery(messageList.dataset),
+			'/taxonomy-vocabularies?pageSize=100',
 		{
 			headers,
 			method: 'GET',
@@ -744,6 +778,29 @@ if (messageList) {
 	)
 		.then((r) => {
 			return r.json();
+		})
+		.then((data) => {
+			const vocabulary = (data.items || []).find((item) => {
+				return item.name === 'Forum Categories';
+			});
+
+			if (!vocabulary) {
+				return {items: []};
+			}
+
+			return Liferay.Util.fetch(
+				portalURL +
+					'/o/headless-admin-taxonomy/v1.0/taxonomy-vocabularies/' +
+					vocabulary.id +
+					'/taxonomy-categories?flatten=true&' +
+					categoryQuery(messageList.dataset).replace('?', ''),
+				{
+					headers,
+					method: 'GET',
+				}
+			).then((r) => {
+				return r.json();
+			});
 		})
 		.then((data) => {
 			categoryTree = buildTree(data.items || []);
@@ -851,8 +908,12 @@ if (messageList) {
 
 		const filterParts = [];
 		if (categoryId) {
+
+			/* taxonomyCategoryIds is a CollectionEntityField — OData rejects
+			   "eq" on collection fields ("Collection not allowed"); "in" is
+			   the working syntax, same as the "keywords" tag filter below. */
 			filterParts.push(
-				"r_categoryThreads_c_c2m0CategoryId eq '" + categoryId + "'"
+				'taxonomyCategoryIds in (' + parseInt(categoryId, 10) + ')'
 			);
 		}
 		if (tagFilter) {
@@ -935,444 +996,343 @@ if (messageList) {
 					return;
 				}
 
-				/* Fetch replies and activities separately to avoid JOIN-based pagination overlap */
-				const messageIds = items.map((t) => {
-					return t.id;
-				});
-				const repliesFilter = messageIds
-					.map((id) => {
-						return (
-							"r_threadMessages_c_c2m0ThreadId eq '" + id + "'"
+				let html = '';
+				let missingDisplayPage = false;
+				items.forEach((msg) => {
+					if (isBanned && msg.actions) {
+						msg.actions = {};
+					}
+
+					const {
+						actions,
+						creator,
+						dateCreated,
+						friendlyUrlPath,
+						keywords,
+						locked,
+						priority,
+						question,
+						title: messageTitle,
+					} = msg;
+
+					const title =
+						messageTitle ||
+						messageList.dataset.labelUntitledMessage ||
+						'Untitled Message';
+					const creatorName =
+						displayName(creator) ||
+						messageList.dataset.labelUnknown ||
+						'Unknown';
+					const creatorImage = (creator && creator.image) || '';
+					const dateStr = dateCreated || '';
+
+					/* Counts are Aggregation fields on the thread, computed by
+					   Liferay over its relationships (and serialized as
+					   strings), so the listing never loads the messages or
+					   flags themselves. The message count includes the topic
+					   body. */
+					const messageCount = parseInt(msg.messageCount, 10) || 0;
+					const replyCount = messageCount ? messageCount - 1 : 0;
+					const hasSolution = parseInt(msg.answerCount, 10) > 0;
+					const isFlagged = parseInt(msg.validatedFlagCount, 10) > 0;
+
+					/* Plain text excerpt of the topic body, written by the
+					   composer when the topic is posted or edited */
+					const preview = msg.preview || '';
+
+					/* Avatar (Clay sticker). Image stickers use `sticker-user-icon`
+			   (white bg + subtle gray ring); initial-based stickers use
+			   the colored `sticker-outline-N` palette. */
+					let avatarHtml;
+					if (creatorImage) {
+						avatarHtml =
+							'<span class="sticker sticker-circle sticker-lg"><span class="sticker-overlay"><img class="sticker-img" src="' +
+							Liferay.Util.escapeHTML(creatorImage) +
+							'" alt="' +
+							Liferay.Util.escapeHTML(creatorName) +
+							'"></span></span>';
+					}
+					else {
+						avatarHtml =
+							'<span class="sticker sticker-circle sticker-lg ' +
+							avatarColorClass(creator) +
+							'"><span class="sticker-overlay">' +
+							Liferay.Util.escapeHTML(avatarInitial(creatorName)) +
+							'</span></span>';
+					}
+
+					/* Solved badge */
+					let solvedBadge = '';
+					if (question && hasSolution) {
+						const solvedText = Liferay.Util.escapeHTML(
+							messageList.dataset.labelSolved || 'Solved'
 						);
-					})
-					.join(' or ');
-				const activitiesFilter = messageIds
-					.map((id) => {
-						return (
-							"r_threadSuspiciousActivities_c_c2m0ThreadId eq '" +
-							id +
-							"'"
+						solvedBadge =
+							'<span class="forums-message-card__solved text-success font-weight-semi-bold ml-3 small">' +
+							checkIcon +
+							' ' +
+							solvedText +
+							'</span>';
+					}
+
+					const priorityBadgeHtml = priorityBadge(
+						priority,
+						messageList.dataset
+					);
+
+					const topicHref = friendlyUrlPath
+						? sitePrefix + '/c_c2m0thread/' + friendlyUrlPath
+						: null;
+					if (!topicHref) {
+						missingDisplayPage = true;
+					}
+
+					let flaggedBadge = '';
+					if (isFlagged) {
+						const flaggedText = Liferay.Util.escapeHTML(
+							messageList.dataset.labelFlagged || 'Flagged'
 						);
-					})
-					.join(' or ');
+						flaggedBadge =
+							'<span class="forums-message-card__solved text-danger ml-3 small"><svg class="lexicon-icon lexicon-icon-warning-full" role="presentation" viewBox="0 0 16 16" fill="currentColor"><path d="M16 14.5L8 1 0 14.5h16zM8 13c-.6 0-1-.4-1-1s.4-1 1-1 1 .4 1 1-.4 1-1 1zm1-3H7V6h2v4z"/></svg> ' +
+							flaggedText +
+							'</span>';
+					}
 
-				return Promise.all([
-					Liferay.Util.fetch(
-						portalURL +
-							'/o/c/c2m0messages/scopes/' +
-							scopeGroupId +
-							'?filter=' +
-							encodeURIComponent(repliesFilter) +
-							'&pageSize=500&sort=dateCreated:asc',
-						{headers, method: 'GET'}
-					)
-						.then((r) => {
-							return r.json();
-						})
-						.catch(() => {
-							return {items: []};
-						}),
-					Liferay.Util.fetch(
-						portalURL +
-							'/o/c/c2m0suspiciousactivities/scopes/' +
-							scopeGroupId +
-							'?filter=' +
-							encodeURIComponent(activitiesFilter) +
-							'&pageSize=500',
-						{headers, method: 'GET'}
-					)
-						.then((r) => {
-							return r.json();
-						})
-						.catch(() => {
-							return {items: []};
-						}),
-				]).then(([repliesPage, activitiesPage]) => {
-					const repliesByMessage = {};
-					(repliesPage.items || []).forEach((reply) => {
-						const tid = reply.r_threadMessages_c_c2m0ThreadId;
-						if (!repliesByMessage[tid]) {
-							repliesByMessage[tid] = [];
-						}
-						repliesByMessage[tid].push(reply);
-					});
-					const activitiesByMessage = {};
-					(activitiesPage.items || []).forEach((activity) => {
-						const tid =
-							activity.r_threadSuspiciousActivities_c_c2m0ThreadId;
-						if (!activitiesByMessage[tid]) {
-							activitiesByMessage[tid] = [];
-						}
-						activitiesByMessage[tid].push(activity);
-					});
-					items.forEach((msg) => {
-						msg.threadMessages = repliesByMessage[msg.id] || [];
-						msg.threadSuspiciousActivities =
-							activitiesByMessage[msg.id] || [];
-					});
+					let lockedBadge = '';
+					if (locked) {
+						const lockedText = Liferay.Util.escapeHTML(
+							messageList.dataset.labelLocked || 'Locked'
+						);
+						lockedBadge =
+							'<div class="forums-message-card__solved text-secondary small mt-2"><svg class="lexicon-icon lexicon-icon-lock" role="presentation"><use href="' +
+							clayIconsUrl +
+							'#lock"></use></svg> ' +
+							lockedText +
+							'</div>';
+					}
 
-					let html = '';
-					let missingDisplayPage = false;
-					items.forEach((msg) => {
-						if (isBanned && msg.actions) {
-							msg.actions = {};
-						}
-
-						const {
-							actions,
-							creator,
-							dateCreated,
-							friendlyUrlPath,
-							keywords,
-							locked,
-							priority,
-							question,
-							threadMessages,
-							threadSuspiciousActivities,
-							title: messageTitle,
-						} = msg;
-
-						const title =
-							messageTitle ||
-							messageList.dataset.labelUntitledMessage ||
-							'Untitled Message';
-						const creatorName =
-							displayName(creator) ||
-							messageList.dataset.labelUnknown ||
-							'Unknown';
-						const creatorImage = (creator && creator.image) || '';
-						const dateStr = dateCreated || '';
-						const messages = threadMessages || [];
-						const replyCount = messages.length
-							? messages.length - 1
-							: 0;
-						let hasSolution = false;
-
-						for (const {answer} of messages) {
-							if (answer === true) {
-								hasSolution = true;
-								break;
+					html +=
+						'<div class="card forums-message-card">' +
+						'<div class="card-body">' +
+						'<div class="autofit-row">' +
+						'<div class="autofit-col forums-message-card__avatar-col">' +
+						avatarHtml +
+						'<div class="forums-message-card__username text-secondary text-truncate">' +
+						Liferay.Util.escapeHTML(creatorName) +
+						'</div>' +
+						'</div>' +
+						'<div class="autofit-col autofit-col-expand forums-message-card__content">' +
+						'<h5 class="card-title forums-message-card__title">' +
+						(topicHref
+							? '<a href="' +
+								Liferay.Util.escapeHTML(topicHref) +
+								'">' +
+								Liferay.Util.escapeHTML(title) +
+								'</a>'
+							: '<span>' +
+								Liferay.Util.escapeHTML(title) +
+								'</span>') +
+						priorityBadgeHtml +
+						solvedBadge +
+						flaggedBadge +
+						'</h5>' +
+						'<p class="forums-message-card__preview text-secondary">' +
+						Liferay.Util.escapeHTML(preview) +
+						'</p>' +
+						(function () {
+							const messageTags = keywords || [];
+							if (!messageTags.length) {
+								return '';
 							}
-						}
+							let tHtml =
+								'<div class="forums-message-card__tags">';
+							messageTags.forEach((tag) => {
+								const isActive = tagFilter === tag;
+								tHtml +=
+									'<a href="' +
+									Liferay.Util.escapeHTML(tagHref(tag)) +
+									'" class="label label-lg forums-message-card__tag forums-message-card__tag--clickable' +
+									(isActive
+										? ' forums-message-card__tag--active'
+										: '') +
+									'" data-tag="' +
+									Liferay.Util.escapeHTML(tag) +
+									'"><span class="label-item label-item-expand">' +
+									Liferay.Util.escapeHTML(tag) +
+									'</span></a>';
+							});
+							tHtml += '</div>';
 
-						let isFlagged = false;
-						const suspiciousActivities =
-							threadSuspiciousActivities || [];
-						for (const {validated} of suspiciousActivities) {
-							if (validated === true) {
-								isFlagged = true;
-								break;
-							}
-						}
-
-						/* Get first message body as preview */
-						let preview = '';
-						const [firstMessage] = messages;
-						if (firstMessage && firstMessage.body) {
-							const parsedBody = new DOMParser().parseFromString(
-								firstMessage.body,
-								'text/html'
+							return tHtml;
+						})() +
+						'<div class="forums-message-card__meta text-secondary small">' +
+						'<span class="forums-message-card__meta-item">' +
+						clockIcon +
+						' <time datetime="' +
+						Liferay.Util.escapeHTML(dateStr) +
+						'" title="' +
+						fullDateTime(dateStr) +
+						'" aria-label="' +
+						fullDateTime(dateStr) +
+						'">' +
+						Liferay.Util.escapeHTML(timeAgo(dateStr)) +
+						'</time></span>' +
+						'<span class="forums-message-card__meta-item">' +
+						replyIcon +
+						' ' +
+						(replyCount === 1
+							? (
+									messageList.dataset.labelXReply ||
+									'{0} reply'
+								).replace('{0}', replyCount)
+							: (
+									messageList.dataset.labelXReplies ||
+									'{0} replies'
+								).replace('{0}', replyCount)) +
+						'</span>' +
+						'</div>' +
+						lockedBadge +
+						'</div>' +
+						(function () {
+							const optionsMenuHtml = cardOptionsMenu(
+								msg,
+								locked,
+								actions
 							);
-							preview = parsedBody.body.textContent || '';
-							if (preview.length > 160) {
-								preview = preview.substring(0, 160) + '...';
-							}
-						}
 
-						/* Avatar (Clay sticker). Image stickers use `sticker-user-icon`
-				   (white bg + subtle gray ring); initial-based stickers use
-				   the colored `sticker-outline-N` palette. */
-						let avatarHtml;
-						if (creatorImage) {
-							avatarHtml =
-								'<span class="sticker sticker-circle sticker-lg"><span class="sticker-overlay"><img class="sticker-img" src="' +
-								Liferay.Util.escapeHTML(creatorImage) +
-								'" alt="' +
-								Liferay.Util.escapeHTML(creatorName) +
-								'"></span></span>';
+							return optionsMenuHtml
+								? '<div class="autofit-col forums-message-card__options-col">' +
+									optionsMenuHtml +
+									'</div>'
+								: '';
+						})() +
+						'</div>' +
+						'</div>' +
+						'</div>';
+				});
+
+				// XSS: html is escaped by Liferay.Util.escapeHTML where it is built
+
+				cardsContainer.innerHTML = html;
+				attachDeleteHandlers();
+				attachLockToggleHandlers();
+
+				if (
+					missingDisplayPage &&
+					Liferay.Util &&
+					Liferay.Util.openToast
+				) {
+					Liferay.Util.openToast({
+						message: Liferay.Util.escapeHTML(
+							messageList.dataset
+								.labelDisplayPageNotConfigured ||
+								'Display page is not configured for one or more messages.'
+						),
+						type: 'danger',
+					});
+				}
+
+				/* Showing x-y of total */
+				if (showingEl && totalCount > 0) {
+					const startItem = (currentPage - 1) * pageSize + 1;
+					const endItem = Math.min(
+						currentPage * pageSize,
+						totalCount
+					);
+					const showingLabel = (
+						messageList.dataset.labelShowing ||
+						'Showing {0} of {1} Items'
+					)
+						.replace('{0}', startItem + '-' + endItem)
+						.replace('{1}', totalCount);
+					showingEl.textContent = showingLabel;
+					showingEl.style.display = '';
+				}
+
+				/* Pagination */
+				if (lastPage > 1 && paginationNav && paginationUl) {
+					paginationNav.style.display = '';
+					let pagHtml = '';
+
+					pagHtml +=
+						'<li class="page-item' +
+						(currentPage <= 1 ? ' disabled' : '') +
+						'">' +
+						'<a class="page-link" href="#" data-page="' +
+						(currentPage - 1) +
+						'">&laquo;</a></li>';
+
+					const delta = 2;
+					const pageNumbers = [1];
+					const rangeStart = Math.max(2, currentPage - delta);
+					const rangeEnd = Math.min(
+						lastPage - 1,
+						currentPage + delta
+					);
+
+					if (rangeStart > 2) {
+						pageNumbers.push('ellipsis');
+					}
+					for (let p = rangeStart; p <= rangeEnd; p++) {
+						pageNumbers.push(p);
+					}
+					if (rangeEnd < lastPage - 1) {
+						pageNumbers.push('ellipsis');
+					}
+					pageNumbers.push(lastPage);
+
+					pageNumbers.forEach((p) => {
+						if (p === 'ellipsis') {
+							pagHtml +=
+								'<li class="page-item disabled"><span class="page-link">&hellip;</span></li>';
 						}
 						else {
-							avatarHtml =
-								'<span class="sticker sticker-circle sticker-lg ' +
-								avatarColorClass(creator) +
-								'"><span class="sticker-overlay">' +
-								Liferay.Util.escapeHTML(avatarInitial(creatorName)) +
-								'</span></span>';
+							pagHtml +=
+								'<li class="page-item' +
+								(p === currentPage ? ' active' : '') +
+								'">' +
+								'<a class="page-link" href="#" data-page="' +
+								p +
+								'">' +
+								p +
+								'</a></li>';
 						}
-
-						/* Solved badge */
-						let solvedBadge = '';
-						if (question && hasSolution) {
-							const solvedText = Liferay.Util.escapeHTML(
-								messageList.dataset.labelSolved || 'Solved'
-							);
-							solvedBadge =
-								'<span class="forums-message-card__solved text-success font-weight-semi-bold ml-3 small">' +
-								checkIcon +
-								' ' +
-								solvedText +
-								'</span>';
-						}
-
-						const priorityBadgeHtml = priorityBadge(
-							priority,
-							messageList.dataset
-						);
-
-						const topicHref = friendlyUrlPath
-							? sitePrefix + '/c_c2m0thread/' + friendlyUrlPath
-							: null;
-						if (!topicHref) {
-							missingDisplayPage = true;
-						}
-
-						let flaggedBadge = '';
-						if (isFlagged) {
-							const flaggedText = Liferay.Util.escapeHTML(
-								messageList.dataset.labelFlagged || 'Flagged'
-							);
-							flaggedBadge =
-								'<span class="forums-message-card__solved text-danger ml-3 small"><svg class="lexicon-icon lexicon-icon-warning-full" role="presentation" viewBox="0 0 16 16" fill="currentColor"><path d="M16 14.5L8 1 0 14.5h16zM8 13c-.6 0-1-.4-1-1s.4-1 1-1 1 .4 1 1-.4 1-1 1zm1-3H7V6h2v4z"/></svg> ' +
-								flaggedText +
-								'</span>';
-						}
-
-						let lockedBadge = '';
-						if (locked) {
-							const lockedText = Liferay.Util.escapeHTML(
-								messageList.dataset.labelLocked || 'Locked'
-							);
-							lockedBadge =
-								'<div class="forums-message-card__solved text-secondary small mt-2"><svg class="lexicon-icon lexicon-icon-lock" role="presentation"><use href="' +
-								clayIconsUrl +
-								'#lock"></use></svg> ' +
-								lockedText +
-								'</div>';
-						}
-
-						html +=
-							'<div class="card forums-message-card">' +
-							'<div class="card-body">' +
-							'<div class="autofit-row">' +
-							'<div class="autofit-col forums-message-card__avatar-col">' +
-							avatarHtml +
-							'<div class="forums-message-card__username text-secondary text-truncate">' +
-							Liferay.Util.escapeHTML(creatorName) +
-							'</div>' +
-							'</div>' +
-							'<div class="autofit-col autofit-col-expand forums-message-card__content">' +
-							'<h5 class="card-title forums-message-card__title">' +
-							(topicHref
-								? '<a href="' +
-									Liferay.Util.escapeHTML(topicHref) +
-									'">' +
-									Liferay.Util.escapeHTML(title) +
-									'</a>'
-								: '<span>' +
-									Liferay.Util.escapeHTML(title) +
-									'</span>') +
-							priorityBadgeHtml +
-							solvedBadge +
-							flaggedBadge +
-							'</h5>' +
-							'<p class="forums-message-card__preview text-secondary">' +
-							Liferay.Util.escapeHTML(preview) +
-							'</p>' +
-							(function () {
-								const messageTags = keywords || [];
-								if (!messageTags.length) {
-									return '';
-								}
-								let tHtml =
-									'<div class="forums-message-card__tags">';
-								messageTags.forEach((tag) => {
-									const isActive = tagFilter === tag;
-									tHtml +=
-										'<a href="' +
-										Liferay.Util.escapeHTML(tagHref(tag)) +
-										'" class="label label-lg forums-message-card__tag forums-message-card__tag--clickable' +
-										(isActive
-											? ' forums-message-card__tag--active'
-											: '') +
-										'" data-tag="' +
-										Liferay.Util.escapeHTML(tag) +
-										'"><span class="label-item label-item-expand">' +
-										Liferay.Util.escapeHTML(tag) +
-										'</span></a>';
-								});
-								tHtml += '</div>';
-
-								return tHtml;
-							})() +
-							'<div class="forums-message-card__meta text-secondary small">' +
-							'<span class="forums-message-card__meta-item">' +
-							clockIcon +
-							' <time datetime="' +
-							Liferay.Util.escapeHTML(dateStr) +
-							'" title="' +
-							fullDateTime(dateStr) +
-							'" aria-label="' +
-							fullDateTime(dateStr) +
-							'">' +
-							Liferay.Util.escapeHTML(timeAgo(dateStr)) +
-							'</time></span>' +
-							'<span class="forums-message-card__meta-item">' +
-							replyIcon +
-							' ' +
-							(replyCount === 1
-								? (
-										messageList.dataset.labelXReply ||
-										'{0} reply'
-									).replace('{0}', replyCount)
-								: (
-										messageList.dataset.labelXReplies ||
-										'{0} replies'
-									).replace('{0}', replyCount)) +
-							'</span>' +
-							'</div>' +
-							lockedBadge +
-							'</div>' +
-							(function () {
-								const optionsMenuHtml = cardOptionsMenu(
-									msg,
-									locked,
-									actions
-								);
-
-								return optionsMenuHtml
-									? '<div class="autofit-col forums-message-card__options-col">' +
-										optionsMenuHtml +
-										'</div>'
-									: '';
-							})() +
-							'</div>' +
-							'</div>' +
-							'</div>';
 					});
 
-					// XSS: html is escaped by Liferay.Util.escapeHTML where it is built
+					pagHtml +=
+						'<li class="page-item' +
+						(currentPage >= lastPage ? ' disabled' : '') +
+						'">' +
+						'<a class="page-link" href="#" data-page="' +
+						(currentPage + 1) +
+						'">&raquo;</a></li>';
 
-					cardsContainer.innerHTML = html;
-					attachDeleteHandlers();
-					attachLockToggleHandlers();
+					// XSS: pagHtml is escaped by construction, interpolating only integers
 
-					if (
-						missingDisplayPage &&
-						Liferay.Util &&
-						Liferay.Util.openToast
-					) {
-						Liferay.Util.openToast({
-							message: Liferay.Util.escapeHTML(
-								messageList.dataset
-									.labelDisplayPageNotConfigured ||
-									'Display page is not configured for one or more messages.'
-							),
-							type: 'danger',
-						});
-					}
+					paginationUl.innerHTML = pagHtml;
 
-					/* Showing x-y of total */
-					if (showingEl && totalCount > 0) {
-						const startItem = (currentPage - 1) * pageSize + 1;
-						const endItem = Math.min(
-							currentPage * pageSize,
-							totalCount
-						);
-						const showingLabel = (
-							messageList.dataset.labelShowing ||
-							'Showing {0} of {1} Items'
-						)
-							.replace('{0}', startItem + '-' + endItem)
-							.replace('{1}', totalCount);
-						showingEl.textContent = showingLabel;
-						showingEl.style.display = '';
-					}
-
-					/* Pagination */
-					if (lastPage > 1 && paginationNav && paginationUl) {
-						paginationNav.style.display = '';
-						let pagHtml = '';
-
-						pagHtml +=
-							'<li class="page-item' +
-							(currentPage <= 1 ? ' disabled' : '') +
-							'">' +
-							'<a class="page-link" href="#" data-page="' +
-							(currentPage - 1) +
-							'">&laquo;</a></li>';
-
-						const delta = 2;
-						const pageNumbers = [1];
-						const rangeStart = Math.max(2, currentPage - delta);
-						const rangeEnd = Math.min(
-							lastPage - 1,
-							currentPage + delta
-						);
-
-						if (rangeStart > 2) {
-							pageNumbers.push('ellipsis');
-						}
-						for (let p = rangeStart; p <= rangeEnd; p++) {
-							pageNumbers.push(p);
-						}
-						if (rangeEnd < lastPage - 1) {
-							pageNumbers.push('ellipsis');
-						}
-						pageNumbers.push(lastPage);
-
-						pageNumbers.forEach((p) => {
-							if (p === 'ellipsis') {
-								pagHtml +=
-									'<li class="page-item disabled"><span class="page-link">&hellip;</span></li>';
-							}
-							else {
-								pagHtml +=
-									'<li class="page-item' +
-									(p === currentPage ? ' active' : '') +
-									'">' +
-									'<a class="page-link" href="#" data-page="' +
-									p +
-									'">' +
-									p +
-									'</a></li>';
-							}
-						});
-
-						pagHtml +=
-							'<li class="page-item' +
-							(currentPage >= lastPage ? ' disabled' : '') +
-							'">' +
-							'<a class="page-link" href="#" data-page="' +
-							(currentPage + 1) +
-							'">&raquo;</a></li>';
-
-						// XSS: pagHtml is escaped by construction, interpolating only integers
-
-						paginationUl.innerHTML = pagHtml;
-
-						paginationUl
-							.querySelectorAll('.page-link')
-							.forEach((link) => {
-								link.addEventListener(
-									'click',
-									function (event) {
-										event.preventDefault();
-										const p = parseInt(
-											this.dataset.page,
-											10
-										);
-										if (p >= 1 && p <= lastPage) {
-											currentPage = p;
-											loadMessages();
-											messageList.scrollIntoView({
-												behavior: 'smooth',
-											});
-										}
+					paginationUl
+						.querySelectorAll('.page-link')
+						.forEach((link) => {
+							link.addEventListener(
+								'click',
+								function (event) {
+									event.preventDefault();
+									const p = parseInt(
+										this.dataset.page,
+										10
+									);
+									if (p >= 1 && p <= lastPage) {
+										currentPage = p;
+										loadMessages();
+										messageList.scrollIntoView({
+											behavior: 'smooth',
+										});
 									}
-								);
-							});
-					}
-				}); /* close Promise.all().then() */
+								}
+							);
+						});
+				}
 			})
 			.catch((error) => {
 				hideSkeleton();
@@ -1658,35 +1618,45 @@ if (messageList) {
 
 	/* Initial load */
 	if (Liferay.ThemeDisplay.isSignedIn()) {
-		Liferay.Util.fetch(
-			portalURL +
-				'/o/c/c2m0bans/scopes/' +
-				scopeGroupId +
-				'?filter=' +
-				encodeURIComponent(
-					"bannedUserId eq '" + currentUserId + "'"
-				) +
-				'&pageSize=1',
-			{
-				headers,
-				method: 'GET',
-			}
-		)
-			.then((r) => {
-				return r.json();
-			})
-			.then((data) => {
-				if (data.items && !!data.items.length) {
-					isBanned = true;
+
+		/* A ban is the Forum Banned site role held in this site. */
+		Promise.all([
+			forumsSharedFetch(
+				portalURL +
+					'/o/headless-admin-user/v1.0/my-user-account?fields=siteBriefs',
+				{
+					headers,
+					method: 'GET',
 				}
-				const {actions} = data;
+			).then((r) => {
+				return r.json();
+			}),
+			forumsSharedFetch(
+				portalURL +
+					'/o/headless-admin-user/v1.0/roles/by-external-reference-code/FORUM_BANNED',
+				{
+					headers,
+					method: 'GET',
+				}
+			).then((r) => {
+				return r.ok ? r.json() : {};
+			}),
+		])
+			.then(([userAccount, role]) => {
+				const siteBrief = (userAccount.siteBriefs || []).find(
+					(site) => String(site.id) === String(scopeGroupId)
+				);
+				isBanned =
+					!!siteBrief &&
+					(siteBrief.roleBriefs || []).some(
+						(roleBrief) =>
+							roleBrief.externalReferenceCode === 'FORUM_BANNED'
+					);
 				isModerator =
 					!isBanned &&
 					!!(
-						actions &&
-						(actions['create'] ||
-							actions['post'] ||
-							actions['POST'])
+						role.actions &&
+						role.actions['create-site-role-user-account-association']
 					);
 				loadMessages();
 			})

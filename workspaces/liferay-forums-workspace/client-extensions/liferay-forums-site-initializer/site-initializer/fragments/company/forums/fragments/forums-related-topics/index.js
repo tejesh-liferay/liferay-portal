@@ -3,6 +3,43 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
+/* The forums fragments on one page load some of the same resources (the
+   user's site roles, the Forum Banned role, the current thread). Share one
+   GET per URL across them for the life of the page; every caller gets its
+   own Response, so bodies can be read and mutated independently. */
+const forumsSharedFetch = function (url, options) {
+	if (!window.forumsSharedFetchCache) {
+		window.forumsSharedFetchCache = {};
+
+		Liferay.once('beforeNavigate', () => {
+			delete window.forumsSharedFetchCache;
+		});
+	}
+
+	const cache = window.forumsSharedFetchCache;
+
+	if (!cache[url]) {
+		cache[url] = Liferay.Util.fetch(url, options)
+			.then((response) => {
+				return response.text().then((text) => {
+					return {status: response.status, text};
+				});
+			})
+			.catch((error) => {
+				delete cache[url];
+
+				throw error;
+			});
+	}
+
+	return cache[url].then(({status, text}) => {
+		return new Response(
+			[204, 205, 304].includes(status) ? null : text,
+			{headers: {'Content-Type': 'application/json'}, status}
+		);
+	});
+};
+
 const relatedTopics = fragmentElement.querySelector('#forumsRelatedTopics');
 
 if (relatedTopics && !document.body.classList.contains('has-edit-mode-menu')) {
@@ -22,7 +59,9 @@ if (relatedTopics && !document.body.classList.contains('has-edit-mode-menu')) {
 	const urlParams = new URLSearchParams(window.location.search);
 	let currentMessageId = urlParams.get('messageId');
 
-	const runRelatedTopics = function (resolvedMessageId) {
+	/* resolvedThread is the thread when the caller already loaded it (the
+	   mapped ERC lookup returns the full entry), so it is not fetched again */
+	const runRelatedTopics = function (resolvedMessageId, resolvedThread) {
 		currentMessageId = resolvedMessageId;
 
 		if (!currentMessageId) {
@@ -34,35 +73,41 @@ if (relatedTopics && !document.body.classList.contains('has-edit-mode-menu')) {
 			return;
 		}
 
-		/* First, get the current message to find its category */
-		Liferay.Util.fetch(
-			portalURL + '/o/c/c2m0threads/' + currentMessageId,
-			{
-				headers,
-				method: 'GET',
-			}
+		/* First, get the current message to find its category. Same URL as
+		   forums-message-detail, so the request is shared. */
+		(resolvedThread
+			? Promise.resolve(resolvedThread)
+			: forumsSharedFetch(
+					portalURL + '/o/c/c2m0threads/' + currentMessageId,
+					{
+						headers,
+						method: 'GET',
+					}
+				).then((r) => {
+					return r.json();
+				})
 		)
-			.then((r) => {
-				return r.json();
-			})
 			.then((msg) => {
-				const categoryId = msg.r_categoryThreads_c_c2m0CategoryId;
+				const categoryBrief =
+					(msg.taxonomyCategoryBriefs || [])[0] || null;
+				const categoryId = categoryBrief
+					? categoryBrief.taxonomyCategoryId
+					: null;
 
-				/* Fetch other messages from the same category */
+				/* Fetch other messages from the same category.
+				   taxonomyCategoryIds is a CollectionEntityField — OData
+				   rejects "eq" on collection fields ("Collection not
+				   allowed"); "in" is the working syntax. */
 				const filterParts = [];
 				if (categoryId) {
-					filterParts.push(
-						"r_categoryThreads_c_c2m0CategoryId eq '" +
-							categoryId +
-							"'"
-					);
+					filterParts.push('taxonomyCategoryIds in (' + categoryId + ')');
 				}
 
 				let url =
 					portalURL +
 					'/o/c/c2m0threads/scopes/' +
 					scopeGroupId +
-					'?pageSize=6&sort=lastPostDate:desc&nestedFields=threadSuspiciousActivities';
+					'?pageSize=6&sort=lastPostDate:desc';
 				if (filterParts.length) {
 					url +=
 						'&filter=' +
@@ -103,22 +148,15 @@ if (relatedTopics && !document.body.classList.contains('has-edit-mode-menu')) {
 					({
 						friendlyUrlPath,
 						scopeKey,
-						threadSuspiciousActivities,
 						title: messageTitle,
+						validatedFlagCount,
 					}) => {
 						const title =
 							messageTitle ||
 							relatedTopics.dataset.labelUntitled ||
 							'Untitled';
-						let isFlagged = false;
-						const suspiciousActivities =
-							threadSuspiciousActivities || [];
-						for (const {validated} of suspiciousActivities) {
-							if (validated === true) {
-								isFlagged = true;
-								break;
-							}
-						}
+						const isFlagged =
+							parseInt(validatedFlagCount, 10) > 0;
 
 						let flaggedBadge = '';
 						if (isFlagged) {
@@ -214,7 +252,7 @@ if (relatedTopics && !document.body.classList.contains('has-edit-mode-menu')) {
 		}
 
 		if (replyErc) {
-			Liferay.Util.fetch(
+			forumsSharedFetch(
 				portalURL +
 					'/o/c/c2m0messages/scopes/' +
 					scopeGroupId +
@@ -265,7 +303,7 @@ if (relatedTopics && !document.body.classList.contains('has-edit-mode-menu')) {
 					'</div>';
 			}
 			else {
-				Liferay.Util.fetch(
+				forumsSharedFetch(
 					portalURL +
 						'/o/c/c2m0threads/scopes/' +
 						scopeGroupId +
@@ -284,7 +322,10 @@ if (relatedTopics && !document.body.classList.contains('has-edit-mode-menu')) {
 						return r.json();
 					})
 					.then((data) => {
-						runRelatedTopics(data.id ? String(data.id) : null);
+						runRelatedTopics(
+							data.id ? String(data.id) : null,
+							data
+						);
 					})
 					.catch(() => {
 						runRelatedTopics(null);

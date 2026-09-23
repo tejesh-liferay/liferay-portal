@@ -61,6 +61,67 @@ if (forumsMod) {
 		});
 	}
 
+	/* A ban is the Forum Banned site role held in this site. The user
+	   search index stores site role names without their site, so every
+	   listing is narrowed again by the user's own site briefs. */
+	const forumBannedRoleURL =
+		portalURL +
+		'/o/headless-admin-user/v1.0/roles/by-external-reference-code/FORUM_BANNED';
+
+	const buildBannedUserAccountsURL = function (query) {
+		return (
+			portalURL +
+			'/o/headless-admin-user/v1.0/sites/' +
+			scopeGroupId +
+			'/user-accounts?filter=' +
+			encodeURIComponent(
+				"userGroupRoleNames/any(r:r eq 'Forum Banned')"
+			) +
+			query
+		);
+	};
+
+	const buildForumBannedAssociationURL = function (userId) {
+		return (
+			forumBannedRoleURL +
+			'/association/user-account/' +
+			parseInt(userId, 10) +
+			'/site/' +
+			scopeGroupId
+		);
+	};
+
+	const isBannedInSite = function (userAccount) {
+		const siteBrief = (userAccount.siteBriefs || []).find(
+			(site) => String(site.id) === String(scopeGroupId)
+		);
+
+		return (
+			!!siteBrief &&
+			(siteBrief.roleBriefs || []).some(
+				(roleBrief) =>
+					roleBrief.externalReferenceCode === 'FORUM_BANNED'
+			)
+		);
+	};
+
+	/* HATEOAS: only users allowed to assign the Forum Banned site role may
+	   ban and revoke bans. */
+	const canBanPromise = Liferay.Util.fetch(forumBannedRoleURL, {
+		headers,
+		method: 'GET',
+	})
+		.then((r) => {
+			return r.ok ? r.json() : {};
+		})
+		.then((role) => {
+			return !!(
+				role.actions &&
+				role.actions['create-site-role-user-account-association']
+			);
+		})
+		.catch(() => false);
+
 	/* Reason labels map */
 	const reasonLabels = {
 		'harassment-bullying':
@@ -232,39 +293,6 @@ if (forumsMod) {
 		}
 	};
 
-	/* An object validation rule failure comes back as a problem detail
-	   whose own "detail" field is itself a JSON-encoded array of
-	   {errorMessage} entries, e.g.:
-	   {"detail": "[{\"errorMessage\":\"User already banned\"}]", ...} */
-	const parseValidationErrorMessage = function (problemDetailJSONObject) {
-		try {
-			const detailJSONArray = JSON.parse(
-				problemDetailJSONObject.detail
-			);
-			const messages = (Array.isArray(detailJSONArray)
-				? detailJSONArray
-				: [detailJSONArray]
-			)
-				.map((entry) => entry && entry.errorMessage)
-				.filter(Boolean);
-
-			if (messages.length) {
-				return messages.join(' ');
-			}
-		}
-		catch (error) {
-
-			// "detail" wasn't the nested validation-rule JSON array shape
-
-		}
-
-		return (
-			problemDetailJSONObject.title ||
-			problemDetailJSONObject.detail ||
-			null
-		);
-	};
-
 	/* Tab click handlers */
 	modTabLinks.forEach((tab) => {
 		tab.addEventListener('click', function (event) {
@@ -384,36 +412,32 @@ if (forumsMod) {
 			paginationNav.style.display = 'none';
 		}
 
-		const url =
-			portalURL +
-			'/o/c/c2m0bans/scopes/' +
-			scopeGroupId +
-			'?sort=dateCreated:desc' +
-			'&page=' +
-			currentPage +
-			'&pageSize=' +
-			pageSize;
-
-		Liferay.Util.fetch(url, {headers, method: 'GET'})
-			.then((r) => {
+		Promise.all([
+			canBanPromise,
+			Liferay.Util.fetch(
+				buildBannedUserAccountsURL(
+					'&sort=givenName:asc' +
+						'&page=' +
+						currentPage +
+						'&pageSize=' +
+						pageSize
+				),
+				{headers, method: 'GET'}
+			).then((r) => {
 				return r.json();
-			})
-			.then((data) => {
+			}),
+		])
+			.then(([canBan, data]) => {
 				if (loadingEl) {
 					loadingEl.style.display = 'none';
 				}
 
-				const {actions} = data;
-				const hasPermission = !!(
-					actions &&
-					(actions['create'] || actions['post'] || actions['POST'])
-				);
-				applyPermissionVisibility(hasPermission);
-				if (!hasPermission) {
+				applyPermissionVisibility(canBan);
+				if (!canBan) {
 					return;
 				}
 
-				const items = data.items || [];
+				const items = (data.items || []).filter(isBannedInSite);
 				const lastPage = data.lastPage || 1;
 
 				if (!items.length) {
@@ -427,8 +451,9 @@ if (forumsMod) {
 					return;
 				}
 
-				items.forEach((ban) => {
-					const {actions, bannedUserId, dateCreated} = ban;
+				items.forEach((userAccount) => {
+					const {alternateName, familyName, givenName, id} =
+						userAccount;
 
 					const item = document.createElement('div');
 					item.className =
@@ -438,105 +463,67 @@ if (forumsMod) {
 					const titleLink = document.createElement('span');
 					titleLink.className =
 						'forums-moderation__message-title font-weight-bold';
-					titleLink.textContent = (
-						forumsMod.dataset.labelUserId || 'User ID: {0}'
-					).replace('{0}', bannedUserId);
-					const metaDiv = document.createElement('div');
-					metaDiv.className =
-						'forums-moderation__flag-meta text-secondary small mt-1';
-					const dateSpan = document.createElement('span');
-					dateSpan.textContent = (
-						forumsMod.dataset.labelBannedOn || 'Banned on: {0}'
-					).replace('{0}', formatDate(dateCreated));
-					metaDiv.appendChild(dateSpan);
+					const n =
+						[givenName, familyName].filter(Boolean).join(' ') ||
+						alternateName;
+					titleLink.textContent = n
+						? n + ' (ID: ' + id + ')'
+						: (
+								forumsMod.dataset.labelUserId || 'User ID: {0}'
+							).replace('{0}', id);
 					infoDiv.appendChild(titleLink);
-					infoDiv.appendChild(metaDiv);
 					const actionsDiv = document.createElement('div');
 					actionsDiv.className = 'forums-moderation__flag-actions';
-					if (actions && actions['delete']) {
-						const revokeBtn = document.createElement('button');
-						revokeBtn.className = 'btn btn-sm btn-outline-success';
-						revokeBtn.textContent =
-							forumsMod.dataset.labelRevokeBan || 'Revoke Ban';
-						revokeBtn.addEventListener('click', () => {
-							const message =
-								forumsMod.dataset.labelConfirmRevokeBan ||
-								'Are you sure you want to revoke this ban?';
-							showConfirmModal(
-								message,
-								forumsMod.dataset.labelRevokeBan ||
-									'Revoke Ban',
-								() => {
-									revokeBtn.disabled = true;
-									Liferay.Util.fetch(actions['delete'].href, {
+					const revokeBtn = document.createElement('button');
+					revokeBtn.className = 'btn btn-sm btn-outline-success';
+					revokeBtn.textContent =
+						forumsMod.dataset.labelRevokeBan || 'Revoke Ban';
+					revokeBtn.addEventListener('click', () => {
+						const message =
+							forumsMod.dataset.labelConfirmRevokeBan ||
+							'Are you sure you want to revoke this ban?';
+						showConfirmModal(
+							message,
+							forumsMod.dataset.labelRevokeBan || 'Revoke Ban',
+							() => {
+								revokeBtn.disabled = true;
+								Liferay.Util.fetch(
+									buildForumBannedAssociationURL(id),
+									{
 										headers,
 										method: 'DELETE',
-									})
-										.then((r) => {
-											if (r.ok) {
-												item.style.opacity = '0.5';
-												setTimeout(() => {
-													item.remove();
-													showToast(
-														forumsMod.dataset
-															.labelBanRevokedSuccessfully ||
-															'Ban revoked successfully.'
-													);
-													if (
-														!flagList.children
-															.length
-													) {
-														loadBans();
-													}
-												}, 300);
-											}
-										})
-										.catch((event) => {
+									}
+								)
+									.then((r) => {
+										if (r.ok) {
+											item.style.opacity = '0.5';
+											setTimeout(() => {
+												item.remove();
+												showToast(
+													forumsMod.dataset
+														.labelBanRevokedSuccessfully ||
+														'Ban revoked successfully.'
+												);
+												if (!flagList.children.length) {
+													loadBans();
+												}
+											}, 300);
+										}
+										else {
 											revokeBtn.disabled = false;
-											console.error(event);
-										});
-								}
-							);
-						});
-						actionsDiv.appendChild(revokeBtn);
-					}
+										}
+									})
+									.catch((event) => {
+										revokeBtn.disabled = false;
+										console.error(event);
+									});
+							}
+						);
+					});
+					actionsDiv.appendChild(revokeBtn);
 					item.appendChild(infoDiv);
 					item.appendChild(actionsDiv);
 					flagList.appendChild(item);
-
-					/* Names come from the forum's own Forum User object rather than
-					   from the user account API, so reading the ban list needs no
-					   permission over user accounts. Someone who has never posted
-					   here has no row, and the entry keeps showing its id. */
-					Liferay.Util.fetch(
-						portalURL +
-							'/o/c/c2m0users/scopes/' +
-							scopeGroupId +
-							'?fields=firstName,lastName,screenName&pageSize=1&filter=' +
-							encodeURIComponent(
-								'r_lUserToC2M0Users_userId eq ' +
-									bannedUserId
-							),
-						{headers, method: 'GET'}
-					)
-						.then((r) => {
-							return r.json();
-						})
-						.then((data) => {
-							const forumUser = (data.items || [])[0];
-							if (!forumUser) {
-								return;
-							}
-							const n =
-								[forumUser.firstName, forumUser.lastName]
-									.filter(Boolean)
-									.join(' ') || forumUser.screenName;
-							if (n) {
-								titleLink.textContent =
-									n + ' (ID: ' + bannedUserId + ')';
-							}
-						})
-						.catch(() => {});
 				});
 				renderPagination(lastPage, loadBans);
 			})
@@ -582,10 +569,7 @@ if (forumsMod) {
 
 
 		const bannedUserIdsPromise = Liferay.Util.fetch(
-			portalURL +
-				'/o/c/c2m0bans/scopes/' +
-				scopeGroupId +
-				'?fields=bannedUserId&pageSize=200',
+			buildBannedUserAccountsURL('&fields=id,siteBriefs&pageSize=200'),
 			{headers, method: 'GET'}
 		)
 			.then((r) => {
@@ -593,9 +577,9 @@ if (forumsMod) {
 			})
 			.then((banData) => {
 				return new Set(
-					(banData.items || []).map((ban) =>
-						String(ban.bannedUserId)
-					)
+					(banData.items || [])
+						.filter(isBannedInSite)
+						.map((userAccount) => String(userAccount.id))
 				);
 			})
 			.catch(() => new Set());
@@ -608,8 +592,9 @@ if (forumsMod) {
 				return r.json();
 			}),
 			bannedUserIdsPromise,
+			canBanPromise,
 		])
-			.then(([data, bannedUserIds]) => {
+			.then(([data, bannedUserIds, canBan]) => {
 				if (loadingEl) {
 					loadingEl.style.display = 'none';
 				}
@@ -811,9 +796,11 @@ if (forumsMod) {
 						actionsDiv.appendChild(validateBtn);
 					}
 
-					/* Ban Author button (if validated, has an author, and
-					   that author isn't already banned) */
+					/* Ban Author button (if the user may ban, the flag is
+					   validated, has an author, and that author isn't
+					   already banned) */
 					if (
+						canBan &&
 						isValidated &&
 						authorId &&
 						!bannedUserIds.has(String(authorId))
@@ -823,124 +810,67 @@ if (forumsMod) {
 						banBtn.textContent =
 							forumsMod.dataset.labelBanAuthor || 'Ban Author';
 						banBtn.addEventListener('click', () => {
-							banBtn.disabled = true;
+							const message =
+								forumsMod.dataset.labelConfirmBanUser ||
+								'Are you sure you want to ban this user?';
+							showConfirmModal(
+								message,
+								forumsMod.dataset.labelBanAuthor ||
+									'Ban Author',
+								() => {
+									banBtn.disabled = true;
 
-							/* Check for an existing ban first — the object
-							   has no unique constraint on bannedUserId, so a
-							   second POST would create a duplicate row. */
-							Liferay.Util.fetch(
-								portalURL +
-									'/o/c/c2m0bans/scopes/' +
-									scopeGroupId +
-									'?pageSize=1&filter=' +
-									encodeURIComponent(
-										"bannedUserId eq '" +
-											parseInt(authorId, 10) +
-											"'"
-									),
-								{headers, method: 'GET'}
-							)
-								.then((r) => {
-									return r.json();
-								})
-								.then((data) => {
-									if ((data.items || []).length) {
-										banBtn.style.display = 'none';
-										showToast(
-											forumsMod.dataset
-												.labelUserAlreadyBanned ||
-												'User is already banned.'
-										);
-
-										return;
-									}
-
-									const message =
-										forumsMod.dataset
-											.labelConfirmBanUser ||
-										'Are you sure you want to ban this user?';
-									showConfirmModal(
-										message,
-										forumsMod.dataset.labelBanAuthor ||
-											'Ban Author',
-										() => {
-											Liferay.Util.fetch(
-												portalURL +
-													'/o/c/c2m0bans/scopes/' +
-													scopeGroupId,
-												{
-													body: JSON.stringify({
-														bannedUserId: String(
-															parseInt(
-																authorId,
-																10
-															)
-														),
-														r_lUserToC2M0Bans_userId:
-															parseInt(
-																authorId,
-																10
-															),
-													}),
-													headers,
-													method: 'POST',
-												}
-											)
-												.then((r) => {
-													if (r.ok) {
-														banBtn.style.display =
-															'none';
-														showToast(
-															forumsMod.dataset
-																.labelUserBanned ||
-																'User has been banned.'
-														);
-														return;
-													}
-													return r
-															.json()
-															.catch(() => null)
-															.then((problemDetailJSONObject) => {
-																const message =
-																	(problemDetailJSONObject &&
-																		parseValidationErrorMessage(
-																			problemDetailJSONObject
-																		)) ||
-																	forumsMod.dataset.labelBanFailed ||
-																	'Unable to ban user.';
-
-																showErrorToast(message);
-																console.error('Ban failed:', message);
-
-																if (
-																	problemDetailJSONObject &&
-																	problemDetailJSONObject.type ===
-																		'ObjectValidationRuleEngineException'
-																) {
-
-																	/* Someone else banned this user between our
-																	   check and this request — resync instead of
-																	   leaving a stale Ban Author button. */
-																	loadFlags();
-																}
-																else {
-																	banBtn.disabled = false;
-																}
-															});
-												})
-												.catch((event) => {
-													banBtn.disabled = false;
-													console.error(event);
-												});
+									/* Assigning a site role the user already
+									   holds is a no-op, so a concurrent ban by
+									   another moderator needs no check. */
+									Liferay.Util.fetch(
+										buildForumBannedAssociationURL(
+											authorId
+										),
+										{
+											headers,
+											method: 'POST',
 										}
-									);
+									)
+										.then((r) => {
+											if (r.ok) {
+												banBtn.style.display = 'none';
+												showToast(
+													forumsMod.dataset
+														.labelUserBanned ||
+														'User has been banned.'
+												);
 
-									banBtn.disabled = false;
-								})
-								.catch((event) => {
-									banBtn.disabled = false;
-									console.error(event);
-								});
+												return;
+											}
+
+											return r
+												.json()
+												.catch(() => null)
+												.then(
+													(problemDetailJSONObject) => {
+														const message =
+															(problemDetailJSONObject &&
+																problemDetailJSONObject.title) ||
+															forumsMod.dataset
+																.labelBanFailed ||
+															'Unable to ban user.';
+
+														showErrorToast(message);
+														console.error(
+															'Ban failed:',
+															message
+														);
+														banBtn.disabled = false;
+													}
+												);
+										})
+										.catch((event) => {
+											banBtn.disabled = false;
+											console.error(event);
+										});
+								}
+							);
 						});
 						actionsDiv.appendChild(banBtn);
 					}

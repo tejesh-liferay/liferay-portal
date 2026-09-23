@@ -10,11 +10,19 @@
 	},
 	{
 		"actionIds": [
-			"DELETE",
-			"UPDATE",
+			"ASSIGN_MEMBERS",
 			"VIEW"
 		],
-		"resourceName": "[$OBJECT_DEFINITION_CLASS_NAME:C2M0Ban$]",
+		"primKey": "[$ROLE_ID:Forum Banned$]",
+		"resourceName": "com.liferay.portal.kernel.model.Role",
+		"roleName": "Forum Moderator",
+		"scope": 4
+	},
+	{
+		"actionIds": [
+			"VIEW"
+		],
+		"resourceName": "com.liferay.portal.kernel.model.User",
 		"roleName": "Forum Moderator",
 		"scope": 1
 	},
@@ -22,9 +30,20 @@
 		"actionIds": [
 			"VIEW"
 		],
-		"primKey": "0",
-		"resourceName": "[$OBJECT_DEFINITION_CLASS_NAME:C2M0Ban$]",
+		"primKey": "[$ROLE_ID:Forum Banned$]",
+		"resourceName": "com.liferay.portal.kernel.model.Role",
 		"roleName": "User",
+		"scope": 4
+	},
+	{
+		"actionIds": [
+			"DELETE",
+			"PERMISSIONS",
+			"UPDATE",
+			"VIEW"
+		],
+		"resourceName": "com.liferay.asset.kernel.model.AssetCategory",
+		"roleName": "Forum Category Admin",
 		"scope": 1
 	},
 	{
@@ -34,7 +53,7 @@
 			"UPDATE",
 			"VIEW"
 		],
-		"resourceName": "[$OBJECT_DEFINITION_CLASS_NAME:C2M0Category$]",
+		"resourceName": "com.liferay.asset.kernel.model.AssetVocabulary",
 		"roleName": "Forum Category Admin",
 		"scope": 1
 	},
@@ -43,7 +62,16 @@
 			"VIEW"
 		],
 		"primKey": "0",
-		"resourceName": "[$OBJECT_DEFINITION_CLASS_NAME:C2M0Category$]",
+		"resourceName": "com.liferay.asset.kernel.model.AssetCategory",
+		"roleName": "User",
+		"scope": 1
+	},
+	{
+		"actionIds": [
+			"VIEW"
+		],
+		"primKey": "0",
+		"resourceName": "com.liferay.asset.kernel.model.AssetVocabulary",
 		"roleName": "User",
 		"scope": 1
 	},
@@ -133,26 +161,20 @@
 	},
 	{
 		"actionIds": [
-			"ADD_OBJECT_ENTRY"
+			"ADD_CATEGORY",
+			"ADD_VOCABULARY"
 		],
-		"resourceName": "com.liferay.object#[$OBJECT_DEFINITION_ID:C2M0Ban$]",
-		"roleName": "Forum Moderator",
-		"scope": 1
-	},
-	{
-		"actionIds": [
-			"ADD_OBJECT_ENTRY"
-		],
-		"resourceName": "com.liferay.object#[$OBJECT_DEFINITION_ID:C2M0Category$]",
+		"primKey": "0",
+		"resourceName": "com.liferay.asset.categories",
 		"roleName": "Forum Category Admin",
 		"scope": 1
 	},
 	{
 		"actionIds": [
-			"ADD_OBJECT_ENTRY"
+			"ADD_CATEGORY"
 		],
 		"primKey": "0",
-		"resourceName": "com.liferay.object#[$OBJECT_DEFINITION_ID:C2M0Category$]",
+		"resourceName": "com.liferay.asset.categories",
 		"roleName": "User",
 		"scope": 1
 	},

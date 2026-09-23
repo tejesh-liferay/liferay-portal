@@ -7,16 +7,16 @@ const forumsCategoriesAdmin = fragmentElement.querySelector(
 	'#forumsCategoriesAdmin'
 );
 
-/* Category query string. pageSize and sort come from fragment configuration;
+/* Category query params. pageSize and sort come from fragment configuration;
    a blank sort omits the parameter entirely, which is needed on databases
    that cannot sort on a Text object field (Hypersonic raises "data type cast
    needed for parameter or null literal"). */
-function categoryQuery(dataset) {
+function categoryQueryParams(dataset) {
 	const size = dataset.categoryPageSize || '100';
 	const sort = (dataset.categorySort || '').trim();
 
 	return (
-		'?pageSize=' +
+		'pageSize=' +
 		encodeURIComponent(size) +
 		(sort ? '&sort=' + encodeURIComponent(sort) : '')
 	);
@@ -33,8 +33,15 @@ if (forumsCategoriesAdmin) {
 		'Content-Type': 'application/json',
 	};
 
-	/* FK exposed by the C2M0Category self-relationship (0 / absent = top-level) */
-	const PARENT_FK = 'r_categorySubcategories_c_c2m0CategoryId';
+	const TAXONOMY_BASE = portalURL + '/o/headless-admin-taxonomy/v1.0';
+
+	/* Categories live in a single site scoped Vocabulary. The vocabulary is
+	   looked up by name and created on first use — there is no site
+	   initializer or batch mechanism for seeding a Vocabulary declaratively,
+	   so this fragment is the source of truth for its existence. */
+	const VOCABULARY_NAME = 'Forum Categories';
+
+	let vocabularyId = null;
 
 	/* Subcategories are intentionally capped at ONE level.
 	   This is a constant, NOT a configuration option: a configurable depth
@@ -119,7 +126,7 @@ if (forumsCategoriesAdmin) {
 	/* --- Hierarchy helpers ---------------------------------------------- */
 
 	const getParentId = function (cat) {
-		return Number(cat[PARENT_FK]) || 0;
+		return (cat.parentTaxonomyCategory && cat.parentTaxonomyCategory.id) || 0;
 	};
 
 	/* Build {byId, childrenOf} from a flat category list.
@@ -198,17 +205,18 @@ if (forumsCategoriesAdmin) {
 
 	/* --- Data access ----------------------------------------------------- */
 
-	const loadCategories = function () {
-		if (loadingEl) {
-			loadingEl.style.display = 'block';
+	/* The categories live in a Vocabulary, looked up by name and created on
+	   first use. Cached in vocabularyId once resolved. */
+	const getOrCreateVocabulary = function () {
+		if (vocabularyId) {
+			return Promise.resolve(vocabularyId);
 		}
-		listEl.innerHTML = '';
 
-		Liferay.Util.fetch(
-			portalURL +
-				'/o/c/c2m0categories/scopes/' +
+		return Liferay.Util.fetch(
+			TAXONOMY_BASE +
+				'/sites/' +
 				scopeGroupId +
-				categoryQuery(forumsCategoriesAdmin.dataset),
+				'/taxonomy-vocabularies?pageSize=100',
 			{
 				headers,
 				method: 'GET',
@@ -218,15 +226,78 @@ if (forumsCategoriesAdmin) {
 				return r.json();
 			})
 			.then((data) => {
+				const existing = (data.items || []).find((vocabulary) => {
+					return vocabulary.name === VOCABULARY_NAME;
+				});
+
+				if (existing) {
+					vocabularyId = existing.id;
+
+					return vocabularyId;
+				}
+
+				return Liferay.Util.fetch(
+					TAXONOMY_BASE +
+						'/sites/' +
+						scopeGroupId +
+						'/taxonomy-vocabularies',
+					{
+						body: JSON.stringify({name: VOCABULARY_NAME}),
+						headers,
+						method: 'POST',
+					}
+				)
+					.then((r) => {
+						return r.json();
+					})
+					.then((vocabulary) => {
+						vocabularyId = vocabulary.id;
+
+						return vocabularyId;
+					});
+			});
+	};
+
+	const loadCategories = function () {
+		if (loadingEl) {
+			loadingEl.style.display = 'block';
+		}
+		listEl.innerHTML = '';
+
+		getOrCreateVocabulary()
+			.then((id) => {
+				return Liferay.Util.fetch(
+					TAXONOMY_BASE +
+						'/taxonomy-vocabularies/' +
+						id +
+						'/taxonomy-categories?flatten=true&' +
+						categoryQueryParams(forumsCategoriesAdmin.dataset),
+					{
+						headers,
+						method: 'GET',
+					}
+				);
+			})
+			.then((r) => {
+				return r.json();
+			})
+			.then((data) => {
 				if (loadingEl) {
 					loadingEl.style.display = 'none';
 				}
 
-				/* HATEOAS: check collection-level actions for create permission */
+				/* HATEOAS: check collection-level actions for admin permission.
+				   The taxonomy-categories collection hand-builds its own action
+				   map (TaxonomyCategoryResourceImpl), not the generic
+				   object-entry-style "create"/"post" keys. "updateBatch" and
+				   "deleteBatch" are real ActionKeys.UPDATE/DELETE checks on the
+				   vocabulary — anyone holding either is a category admin.
+				   "createBatch" is NOT a usable signal here: it is gated on
+				   plain ActionKeys.VIEW, so it is present for nearly anyone. */
 				const {actions} = data;
 				canCreate = !!(
 					actions &&
-					(actions['create'] || actions['post'] || actions['POST'])
+					(actions['updateBatch'] || actions['deleteBatch'])
 				);
 
 				if (canCreate) {
@@ -573,27 +644,34 @@ if (forumsCategoriesAdmin) {
 		return li;
 	};
 
+	/* parentId empty/falsy creates a top-level category (POSTed directly to
+	   the vocabulary); otherwise the category is created as a child of the
+	   given parent category. */
 	const createCategory = function (name, description, erc, parentId) {
 		const body = {
 			description: description || '',
-			name: name,
+			name,
 			name_i18n: {[defaultLanguageId]: name},
 		};
 		if (erc) {
 			body.externalReferenceCode = erc;
 		}
-		if (parentId) {
-			body[PARENT_FK] = parseInt(parentId, 10);
-		}
 
-		return Liferay.Util.fetch(
-			portalURL + '/o/c/c2m0categories/scopes/' + scopeGroupId,
-			{
-				body: JSON.stringify(body),
-				headers,
-				method: 'POST',
-			}
-		).then((r) => {
+		const url = parentId
+			? TAXONOMY_BASE +
+				'/taxonomy-categories/' +
+				parentId +
+				'/taxonomy-categories'
+			: TAXONOMY_BASE +
+				'/taxonomy-vocabularies/' +
+				vocabularyId +
+				'/taxonomy-categories';
+
+		return Liferay.Util.fetch(url, {
+			body: JSON.stringify(body),
+			headers,
+			method: 'POST',
+		}).then((r) => {
 			if (!r.ok) {
 				throw new Error('Create failed');
 			}
@@ -609,16 +687,21 @@ if (forumsCategoriesAdmin) {
 		description,
 		parentId
 	) {
-		const url = updateUrl || portalURL + '/o/c/c2m0categories/' + id;
+		const url = updateUrl || TAXONOMY_BASE + '/taxonomy-categories/' + id;
 
 		const body = {
 			description: description || '',
-			name: name,
+			name,
 			name_i18n: {[defaultLanguageId]: name},
-		};
 
-		/* 0 unsets the relationship (promotes the category back to top-level) */
-		body[PARENT_FK] = parentId ? parseInt(parentId, 10) : 0;
+			/* An empty object promotes the category back to top-level; an
+			   object with an id re-parents it. Never omit the field — an
+			   absent parentTaxonomyCategory leaves the current parent
+			   untouched instead of applying the picker's selection. */
+			parentTaxonomyCategory: parentId
+				? {id: parseInt(parentId, 10)}
+				: {},
+		};
 
 		return Liferay.Util.fetch(url, {
 			body: JSON.stringify(body),
@@ -724,19 +807,21 @@ if (forumsCategoriesAdmin) {
 			forumsCategoriesAdmin.dataset.labelConfirmDelete ||
 			'Are you sure you want to delete this category?';
 
-		/* The self-relationship cascades: warn that the subtree goes too */
+		/* Deleting a category cascades to its subcategories, but no longer to
+		   any threads — categorization is a tag, not ownership, so a deleted
+		   category's threads simply lose that tag. */
 		if (subcategoryCount > 0) {
 			const cascadeMsg =
 				forumsCategoriesAdmin.dataset
 					.labelConfirmDeleteCategoryWithSubcategories ||
-				'This category has {0} subcategories. Deleting it will also delete them and all of their topics.';
+				'This category has {0} subcategories. Deleting it will also delete them.';
 			message = cascadeMsg.replace('{0}', subcategoryCount);
 		}
 
 		const confirmLabel =
 			forumsCategoriesAdmin.dataset.labelDelete || 'Delete';
 		showConfirmModal(message, confirmLabel, () => {
-			const url = deleteUrl || portalURL + '/o/c/c2m0categories/' + id;
+			const url = deleteUrl || TAXONOMY_BASE + '/taxonomy-categories/' + id;
 			Liferay.Util.fetch(url, {
 				headers,
 				method: 'DELETE',
@@ -768,17 +853,22 @@ if (forumsCategoriesAdmin) {
 			seedBtn.textContent =
 				forumsCategoriesAdmin.dataset.labelSeeding || 'Seeding...';
 
-			const promises = defaultCategories.map(
-				({description, erc, name}) => {
-					return createCategory(name, description, erc).catch(
-						(event) => {
-							console.error(event);
+			getOrCreateVocabulary()
+				.then(() => {
+					const promises = defaultCategories.map(
+						({description, erc, name}) => {
+							return createCategory(
+								name,
+								description,
+								erc
+							).catch((event) => {
+								console.error(event);
+							});
 						}
 					);
-				}
-			);
 
-			Promise.all(promises)
+					return Promise.all(promises);
+				})
 				.then(() => {
 					seedBtn.disabled = false;
 					seedBtn.textContent =

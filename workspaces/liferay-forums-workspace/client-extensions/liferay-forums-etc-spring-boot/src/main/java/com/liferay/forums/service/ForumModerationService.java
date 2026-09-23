@@ -31,34 +31,6 @@ import org.springframework.stereotype.Service;
 @Service
 public class ForumModerationService {
 
-	public boolean canAddForumBan(long userId, String authToken) {
-		if (userId <= 0) {
-			return false;
-		}
-
-		Set<String> roleNames = _fetchRoleNames(userId, authToken);
-
-		boolean allowed = roleNames.contains(_ADMINISTRATOR_ROLE_NAME);
-
-		if (!allowed) {
-			for (String roleName : _fetchForumBanRoleNames(authToken)) {
-				if (roleNames.contains(roleName)) {
-					allowed = true;
-
-					break;
-				}
-			}
-		}
-
-		if (_log.isInfoEnabled()) {
-			_log.info(
-				StringBundler.concat(
-					"canAddForumBan userId=", userId, " allowed=", allowed));
-		}
-
-		return allowed;
-	}
-
 	public boolean canManageForumSuspiciousActivity(
 		long entryId, long siteId, String actorAuthToken, String authToken) {
 
@@ -113,6 +85,30 @@ public class ForumModerationService {
 
 			return false;
 		}
+	}
+
+	public boolean canModerateForum(long userId, String authToken) {
+		if (userId <= 0) {
+			return false;
+		}
+
+		Set<String> roleNames = _fetchRoleNames(userId, authToken);
+
+		boolean allowed = false;
+
+		if (roleNames.contains(_ADMINISTRATOR_ROLE_NAME) ||
+			roleNames.contains(_FORUM_MODERATOR_ROLE_NAME)) {
+
+			allowed = true;
+		}
+
+		if (_log.isInfoEnabled()) {
+			_log.info(
+				StringBundler.concat(
+					"canModerateForum userId=", userId, " allowed=", allowed));
+		}
+
+		return allowed;
 	}
 
 	public void cascadeValidateSuspiciousActivities(
@@ -237,19 +233,57 @@ public class ForumModerationService {
 		}
 
 		try {
-			JSONArray itemsJSONArray = new JSONObject(
+
+			// A ban is the Forum Banned site role, which the user holds in
+			// every site they are banned from. Assigning a site role also
+			// makes the user a member of that site, so the site shows up
+			// among the user's site briefs.
+
+			JSONArray siteBriefsJSONArray = new JSONObject(
 				_liferayApiClient.get(
 					StringBundler.concat(
-						"/o/c/c2m0bans/scopes/", siteId,
-						"?fields=bannedUserId&pageSize=1&filter=",
-						_encode("bannedUserId eq '" + userId + "'")),
+						"/o/headless-admin-user/v1.0/user-accounts/", userId,
+						"?fields=siteBriefs"),
 					authToken)
 			).optJSONArray(
-				"items"
+				"siteBriefs"
 			);
 
-			if ((itemsJSONArray != null) && !itemsJSONArray.isEmpty()) {
-				return true;
+			if (siteBriefsJSONArray == null) {
+				return false;
+			}
+
+			for (int i = 0; i < siteBriefsJSONArray.length(); i++) {
+				JSONObject siteBriefJSONObject =
+					siteBriefsJSONArray.optJSONObject(i);
+
+				if ((siteBriefJSONObject == null) ||
+					(siteBriefJSONObject.optLong("id", 0L) != siteId)) {
+
+					continue;
+				}
+
+				JSONArray roleBriefsJSONArray =
+					siteBriefJSONObject.optJSONArray("roleBriefs");
+
+				if (roleBriefsJSONArray == null) {
+					return false;
+				}
+
+				for (int j = 0; j < roleBriefsJSONArray.length(); j++) {
+					JSONObject roleBriefJSONObject =
+						roleBriefsJSONArray.optJSONObject(j);
+
+					if ((roleBriefJSONObject != null) &&
+						_FORUM_BANNED_ROLE_EXTERNAL_REFERENCE_CODE.equals(
+							roleBriefJSONObject.optString(
+								"externalReferenceCode"))) {
+
+						return true;
+					}
+				}
+
+				return false;
 			}
 
 			return false;
@@ -456,60 +490,6 @@ public class ForumModerationService {
 		return URLEncoder.encode(value, StandardCharsets.UTF_8);
 	}
 
-	private Set<String> _fetchForumBanRoleNames(String authToken) {
-		Set<String> roleNames = new HashSet<>();
-
-		try {
-			JSONArray permissionsJSONArray = new JSONObject(
-				_liferayApiClient.get(
-					"/o/object-admin/v1.0/object-definitions" +
-						"/by-external-reference-code/C2M0_BAN" +
-							"?fields=permissions",
-					authToken)
-			).optJSONArray(
-				"permissions"
-			);
-
-			if (permissionsJSONArray == null) {
-				return roleNames;
-			}
-
-			for (int i = 0; i < permissionsJSONArray.length(); i++) {
-				JSONObject permissionJSONObject =
-					permissionsJSONArray.optJSONObject(i);
-
-				if (permissionJSONObject == null) {
-					continue;
-				}
-
-				JSONArray actionIdsJSONArray =
-					permissionJSONObject.optJSONArray("actionIds");
-
-				if (actionIdsJSONArray == null) {
-					continue;
-				}
-
-				for (int j = 0; j < actionIdsJSONArray.length(); j++) {
-					if (_ADD_OBJECT_ENTRY_ACTION_ID.equals(
-							actionIdsJSONArray.optString(j))) {
-
-						roleNames.add(
-							permissionJSONObject.optString("roleName", ""));
-
-						break;
-					}
-				}
-			}
-		}
-		catch (Exception exception) {
-			_log.error(
-				"Unable to read the roles that may add a forum ban: " +
-					exception.getMessage());
-		}
-
-		return roleNames;
-	}
-
 	private Set<String> _fetchRoleNames(long userId, String authToken) {
 		Set<String> roleNames = new HashSet<>();
 
@@ -547,10 +527,12 @@ public class ForumModerationService {
 		return roleNames;
 	}
 
-	private static final String _ADD_OBJECT_ENTRY_ACTION_ID =
-		"ADD_OBJECT_ENTRY";
-
 	private static final String _ADMINISTRATOR_ROLE_NAME = "Administrator";
+
+	private static final String _FORUM_BANNED_ROLE_EXTERNAL_REFERENCE_CODE =
+		"FORUM_BANNED";
+
+	private static final String _FORUM_MODERATOR_ROLE_NAME = "Forum Moderator";
 
 	private static final Log _log = LogFactory.getLog(
 		ForumModerationService.class);

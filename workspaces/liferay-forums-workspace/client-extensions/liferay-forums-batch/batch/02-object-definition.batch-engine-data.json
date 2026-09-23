@@ -77,158 +77,6 @@
 			"enableFormContainer": true,
 			"enableFriendlyURLCustomization": false,
 			"enableIndexSearch": true,
-			"enableLocalization": false,
-			"enableObjectEntryDraft": false,
-			"enableObjectEntryHistory": false,
-			"enableObjectEntrySchedule": false,
-			"enableObjectEntrySubscription": false,
-			"enableObjectEntryVersioning": false,
-			"externalReferenceCode": "C2M0_BAN",
-			"label": {
-				"en_US": "C2M0 Ban"
-			},
-			"modifiable": true,
-			"name": "C2M0Ban",
-			"objectFields": [
-				{
-					"DBType": "String",
-					"businessType": "Text",
-					"externalReferenceCode": "BANNED_USER_ID",
-					"indexed": true,
-					"indexedAsKeyword": true,
-					"label": {
-						"en_US": "Banned User ID"
-					},
-					"name": "bannedUserId",
-					"required": true,
-					"unique": true
-				}
-			],
-			"objectFolderExternalReferenceCode": "C2M0_FORUMS",
-			"panelCategoryKey": "",
-			"parameterRequired": false,
-			"pluralLabel": {
-				"en_US": "C2M0 Bans"
-			},
-			"portlet": false,
-			"restContextPath": "/o/c/c2m0bans",
-			"scope": "site",
-			"status": {
-				"code": 0,
-				"label": "approved",
-				"label_i18n": "Approved"
-			},
-			"system": false,
-			"titleObjectFieldName": "externalReferenceCode"
-		},
-		{
-			"accountEntryRestricted": false,
-			"accountEntryRestrictedObjectFieldName": "",
-			"active": true,
-			"enableCategorization": true,
-			"enableComments": false,
-			"enableFormContainer": true,
-			"enableFriendlyURLCustomization": false,
-			"enableIndexSearch": true,
-			"enableLocalization": true,
-			"enableObjectEntryDraft": false,
-			"enableObjectEntryHistory": false,
-			"enableObjectEntrySchedule": false,
-			"enableObjectEntrySubscription": false,
-			"enableObjectEntryVersioning": false,
-			"externalReferenceCode": "C2M0_CATEGORY",
-			"label": {
-				"en_US": "C2M0 Category"
-			},
-			"modifiable": true,
-			"name": "C2M0Category",
-			"objectFields": [
-				{
-					"DBType": "Clob",
-					"businessType": "RichText",
-					"externalReferenceCode": "DESCRIPTION",
-					"label": {
-						"en_US": "Description"
-					},
-					"name": "description",
-					"required": false
-				},
-				{
-					"DBType": "String",
-					"businessType": "Text",
-					"externalReferenceCode": "NAME",
-					"indexed": true,
-					"indexedAsKeyword": false,
-					"indexedLanguageId": "en_US",
-					"label": {
-						"en_US": "Name"
-					},
-					"localized": true,
-					"name": "name",
-					"required": true
-				}
-			],
-			"objectFolderExternalReferenceCode": "C2M0_FORUMS",
-			"objectRelationships": [
-				{
-					"deletionType": "cascade",
-					"externalReferenceCode": "C2M0_CATEGORY_THREADS",
-					"label": {
-						"en_US": "Category Threads"
-					},
-					"name": "categoryThreads",
-					"objectDefinitionExternalReferenceCode1": "C2M0_CATEGORY",
-					"objectDefinitionExternalReferenceCode2": "C2M0_THREAD",
-					"type": "oneToMany"
-				},
-				{
-					"deletionType": "cascade",
-					"externalReferenceCode": "C2M0_CATEGORY_MESSAGES",
-					"label": {
-						"en_US": "Category Messages"
-					},
-					"name": "categoryMessages",
-					"objectDefinitionExternalReferenceCode1": "C2M0_CATEGORY",
-					"objectDefinitionExternalReferenceCode2": "C2M0_MESSAGE",
-					"type": "oneToMany"
-				},
-				{
-					"deletionType": "cascade",
-					"externalReferenceCode": "C2M0_CATEGORY_SUBCATEGORIES",
-					"label": {
-						"en_US": "Category Subcategories"
-					},
-					"name": "categorySubcategories",
-					"objectDefinitionExternalReferenceCode1": "C2M0_CATEGORY",
-					"objectDefinitionExternalReferenceCode2": "C2M0_CATEGORY",
-					"type": "oneToMany"
-				}
-			],
-			"panelCategoryKey": "",
-			"parameterRequired": false,
-			"pluralLabel": {
-				"en_US": "C2M0 Categories"
-			},
-			"portlet": false,
-			"restContextPath": "/o/c/c2m0categories",
-			"scope": "site",
-			"status": {
-				"code": 0,
-				"label": "approved",
-				"label_i18n": "Approved"
-			},
-			"system": false,
-			"titleObjectFieldName": "name"
-		},
-		{
-			"accountEntryRestricted": false,
-			"accountEntryRestrictedObjectFieldName": "",
-			"active": true,
-			"enableCategorization": true,
-			"enableComments": false,
-			"enableFormContainer": true,
-			"enableFriendlyURLCustomization": false,
-			"enableIndexSearch": true,
 			"enableLocalization": true,
 			"enableObjectEntryDraft": false,
 			"enableObjectEntryHistory": false,
@@ -759,6 +607,100 @@
 					},
 					"name": "question",
 					"required": false
+				},
+				{
+					"DBType": "String",
+					"businessType": "Aggregation",
+					"externalReferenceCode": "ANSWER_COUNT",
+					"label": {
+						"en_US": "Answer Count"
+					},
+					"name": "answerCount",
+					"objectFieldSettings": [
+						{
+							"name": "function",
+							"value": "COUNT"
+						},
+						{
+							"name": "objectRelationshipName",
+							"value": "threadMessages"
+						},
+						{
+							"name": "filters",
+							"value": [
+								{
+									"filterBy": "answer",
+									"filterType": "eq",
+									"json": {
+										"eq": true
+									}
+								}
+							]
+						}
+					],
+					"required": false
+				},
+				{
+					"DBType": "String",
+					"businessType": "Aggregation",
+					"externalReferenceCode": "MESSAGE_COUNT",
+					"label": {
+						"en_US": "Message Count"
+					},
+					"name": "messageCount",
+					"objectFieldSettings": [
+						{
+							"name": "function",
+							"value": "COUNT"
+						},
+						{
+							"name": "objectRelationshipName",
+							"value": "threadMessages"
+						}
+					],
+					"required": false
+				},
+				{
+					"DBType": "String",
+					"businessType": "Text",
+					"externalReferenceCode": "PREVIEW",
+					"label": {
+						"en_US": "Preview"
+					},
+					"name": "preview",
+					"required": false
+				},
+				{
+					"DBType": "String",
+					"businessType": "Aggregation",
+					"externalReferenceCode": "VALIDATED_FLAG_COUNT",
+					"label": {
+						"en_US": "Validated Flag Count"
+					},
+					"name": "validatedFlagCount",
+					"objectFieldSettings": [
+						{
+							"name": "function",
+							"value": "COUNT"
+						},
+						{
+							"name": "objectRelationshipName",
+							"value": "threadSuspiciousActivities"
+						},
+						{
+							"name": "filters",
+							"value": [
+								{
+									"filterBy": "validated",
+									"filterType": "eq",
+									"json": {
+										"eq": true
+									}
+								}
+							]
+						}
+					],
+					"required": false
 				}
 			],
 			"objectFolderExternalReferenceCode": "C2M0_FORUMS",
@@ -1005,17 +947,6 @@
 			"name": "User",
 			"objectFolderExternalReferenceCode": "default",
 			"objectRelationships": [
-				{
-					"deletionType": "cascade",
-					"externalReferenceCode": "L_USER_TO_C2M0_BANS",
-					"label": {
-						"en_US": "L User to C2M0 Bans"
-					},
-					"name": "lUserToC2M0Bans",
-					"objectDefinitionExternalReferenceCode1": "L_USER",
-					"objectDefinitionExternalReferenceCode2": "C2M0_BAN",
-					"type": "oneToMany"
-				},
 				{
 					"deletionType": "disassociate",
 					"externalReferenceCode": "L_USER_TO_C2M0_VOTES",
