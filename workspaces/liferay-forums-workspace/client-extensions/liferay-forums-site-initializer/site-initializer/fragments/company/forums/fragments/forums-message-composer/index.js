@@ -532,6 +532,10 @@ if (messageComposer) {
 		return value.slice(0, MAX_SUBJECT_LENGTH);
 	};
 	let parentMessageId = null;
+
+	/* The parent's treePath (its ancestors' IDs, top-level reply first), so
+	   a reply is written with its own: the parent's path plus the parent */
+	let parentTreePath = null;
 	let categoriesLoaded = false;
 	let isEditMode = false;
 	let editMessageId = null;
@@ -1068,6 +1072,7 @@ if (messageComposer) {
 		isQuestion,
 		messageId: optionMessageId,
 		parentMessageId: optionParentMessageId,
+		parentTreePath: optionParentTreePath,
 		priority,
 		subject,
 		tags,
@@ -1088,6 +1093,7 @@ if (messageComposer) {
 			categoryIdParam = String(categoryId);
 		}
 		parentMessageId = optionParentMessageId || null;
+		parentTreePath = optionParentTreePath || null;
 		isReplyMode = replyMode;
 
 		if (replyMode && subject) {
@@ -1161,6 +1167,7 @@ if (messageComposer) {
 				forumsCategoryId,
 				forumsMessageId,
 				forumsParentId,
+				forumsParentTreePath,
 				forumsTags,
 			} = trigger.dataset;
 			const composeMessageId = forumsMessageId || messageId;
@@ -1184,6 +1191,7 @@ if (messageComposer) {
 					? composeMessageId
 					: null,
 				parentMessageId: composeParentId,
+				parentTreePath: forumsParentTreePath,
 				tags: parsedTags,
 			});
 		}
@@ -1425,6 +1433,16 @@ if (messageComposer) {
 					subject_i18n: {[defaultLanguageId]: replySubject},
 				};
 
+				/* Left out when the parent has no path yet (written before
+				   treePath existed), which the tree path validation allows */
+				if (!parentMessageId) {
+					replyPayload.treePath = '/';
+				}
+				else if (parentTreePath) {
+					replyPayload.treePath =
+						parentTreePath + parseInt(parentMessageId, 10) + '/';
+				}
+
 				Liferay.Util.fetch(
 					portalURL + '/o/c/c2m0messages/scopes/' + scopeGroupId,
 					{
@@ -1441,6 +1459,21 @@ if (messageComposer) {
 						return r.json();
 					})
 					.then((reply) => {
+
+						/* forums-message-detail opens the branch down to the
+						   new reply after the reload, since nested replies
+						   start collapsed */
+						try {
+							sessionStorage.setItem(
+								'forumsRevealReply',
+								JSON.stringify({
+									replyId: reply && reply.id,
+									threadId: messageId,
+								})
+							);
+						}
+						catch (error) {}
+
 						return uploadAttachments(reply && reply.id);
 					})
 					.then(() => {
@@ -1535,6 +1568,7 @@ if (messageComposer) {
 							r_threadMessages_c_c2m0ThreadId: threadId,
 							subject,
 							subject_i18n: {[defaultLanguageId]: subject},
+							treePath: '/',
 						};
 
 						const promises = [];

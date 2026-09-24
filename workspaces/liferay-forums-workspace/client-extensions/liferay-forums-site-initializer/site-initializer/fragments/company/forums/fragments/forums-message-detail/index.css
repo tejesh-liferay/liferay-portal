@@ -155,6 +155,14 @@ body.has-edit-mode-menu #forumsDetailReplyERC {
 	border-top: 1px solid var(--gray-300, #cdced9);
 }
 
+.forums-replies-toggle {
+	align-items: center;
+	display: inline-flex;
+	gap: 0.25rem;
+	margin-bottom: 0.5rem;
+	padding-left: 0;
+}
+
 .forums-message-detail__reply-card--solution {
 	background-color: var(--success-l2, #edf9f0);
 	border-radius: var(--border-radius-lg, 0.5rem);

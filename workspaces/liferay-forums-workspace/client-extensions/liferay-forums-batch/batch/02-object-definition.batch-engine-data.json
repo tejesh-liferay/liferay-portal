@@ -300,6 +300,16 @@
 				},
 				{
 					"DBType": "String",
+					"businessType": "Text",
+					"externalReferenceCode": "TREE_PATH",
+					"label": {
+						"en_US": "Tree Path"
+					},
+					"name": "treePath",
+					"required": false
+				},
+				{
+					"DBType": "String",
 					"businessType": "Aggregation",
 					"externalReferenceCode": "VOTE_TOTAL",
 					"label": {
@@ -382,6 +392,19 @@
 					"externalReferenceCode": "C2M0_MESSAGE_LOCKED_VALIDATION",
 					"name": {
 						"en_US": "Thread Lock Enforcement"
+					},
+					"outputType": "fullValidation",
+					"script": ""
+				},
+				{
+					"active": true,
+					"engine": "function#liferay-forums-etc-spring-boot-object-validation-rule-tree-path",
+					"errorLabel": {
+						"en_US": "The reply's position in the conversation does not match its parent."
+					},
+					"externalReferenceCode": "C2M0_MESSAGE_TREE_PATH_VALIDATION",
+					"name": {
+						"en_US": "Tree Path Enforcement"
 					},
 					"outputType": "fullValidation",
 					"script": ""

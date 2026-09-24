@@ -356,6 +356,29 @@ if (messageDetail) {
 		closeReplyOptionMenus(null);
 	});
 
+	/* The reply forums-message-composer just posted to this thread, if any,
+	   so the reload opens the branch down to it */
+	const consumeRevealReplyId = function (threadId) {
+		try {
+			const revealReply = JSON.parse(
+				sessionStorage.getItem('forumsRevealReply') || 'null'
+			);
+
+			sessionStorage.removeItem('forumsRevealReply');
+
+			if (
+				revealReply &&
+				revealReply.replyId &&
+				String(revealReply.threadId) === String(threadId)
+			) {
+				return String(revealReply.replyId);
+			}
+		}
+		catch (error) {}
+
+		return null;
+	};
+
 	/* resolvedThread and resolvedReply are the thread and the targeted reply
 	   when the caller already loaded them (the mapped ERC lookups return the
 	   full entry), so they are not fetched again */
@@ -366,7 +389,11 @@ if (messageDetail) {
 		resolvedReply
 	) {
 		messageId = resolvedMessageId;
-		const targetReplyId = replyId || null;
+
+		/* A reply just posted takes over from the page's own reply */
+		const revealReplyId = consumeRevealReplyId(messageId);
+		const targetReplyId = revealReplyId || replyId || null;
+		const targetReply = revealReplyId ? null : resolvedReply;
 		let skeletonShownAt = Date.now();
 		if (!messageId) {
 			if (loadingEl) {
@@ -392,6 +419,11 @@ if (messageDetail) {
 		   page 1 renders it; a load that starts on a later page (a reply's
 		   display page) fetches it on its own. */
 		let originalPostLoaded = false;
+
+		/* Ancestors of the targeted reply, top-level first, expanded once on
+		   the first load so the reply is on screen to scroll to */
+		let targetReplyPath = null;
+		let targetReplyPathReplies = null;
 		let isBanned = false;
 
 		/* Whether the current user may lock/unlock this topic. Gated the same
@@ -647,6 +679,7 @@ if (messageDetail) {
 				dateCreated,
 				id,
 				r_threadMessages_c_c2m0ThreadId,
+				treePath,
 				voteTotal,
 			} = msg;
 
@@ -706,7 +739,7 @@ if (messageDetail) {
 			const isAuthor =
 				opCreatorId && String(creator.id) === String(opCreatorId);
 
-			return `<div class="forums-message-detail__reply-card${solClass}" data-message-id="${id}"${depthStyle}>
+			return `<div class="forums-message-detail__reply-card${solClass}" data-message-id="${id}" data-reply-depth="${depth}"${depthStyle}>
 			<div class="autofit-row forums-message-detail__reply-layout">
 				<div class="autofit-col mr-2">
 					${renderAvatar(creator, 'sm')}
@@ -734,7 +767,7 @@ if (messageDetail) {
 					<div class="forums-message-detail__reply-body">${body}</div>
 					${renderAttachments(msg)}
 					<div class="forums-message-detail__reply-actions">
-						${canReply && !isThreadLocked ? `<button class="btn btn-outline-primary btn-sm" type="button" data-forums-compose data-forums-reply data-forums-message-id="${r_threadMessages_c_c2m0ThreadId}" data-forums-parent-id="${id}">${messageDetail.dataset.labelReply || 'Reply'}</button>` : ''}
+						${canReply && !isThreadLocked ? `<button class="btn btn-outline-primary btn-sm" type="button" data-forums-compose data-forums-reply data-forums-message-id="${r_threadMessages_c_c2m0ThreadId}" data-forums-parent-id="${id}"${treePath ? ` data-forums-parent-tree-path="${Liferay.Util.escapeHTML(treePath)}"` : ''}>${messageDetail.dataset.labelReply || 'Reply'}</button>` : ''}
 						${
 							hasOptions
 								? `<div class="dropdown forums-message-detail__reply-options">
@@ -763,6 +796,372 @@ if (messageDetail) {
 			</div>
 		</div>`;
 		}
+
+		/* Nested replies load on demand: a card with replies gets a toggle and
+		   an empty container that its direct replies render into, each with a
+		   toggle of its own, so the tree opens one level at a time. */
+		function renderRepliesToggle(parentMessageId, count, depth) {
+			if (!count) {
+				return '';
+			}
+
+			const tmpl =
+				count === 1
+					? messageDetail.dataset.labelXReply || '{0} reply'
+					: messageDetail.dataset.labelXReplies || '{0} replies';
+			const indent = (depth + 1) * 2.5;
+
+			return `<button aria-expanded="false" class="btn btn-link btn-sm forums-replies-toggle" data-parent-message-id="${parentMessageId}" data-reply-depth="${depth + 1}" style="margin-left:${indent}rem" type="button">
+			<svg class="lexicon-icon lexicon-icon-angle-right" role="presentation"><use href="${clayIconsUrl}#angle-right"></use></svg>
+			${Liferay.Util.escapeHTML(tmpl.replace('{0}', count))}
+		</button>
+		<div class="forums-replies-children" data-parent-message-id="${parentMessageId}" hidden></div>`;
+		}
+
+		function setRepliesToggleExpanded(toggle, expanded) {
+			toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+
+			const icon = expanded ? 'angle-down' : 'angle-right';
+			const useEl = toggle.querySelector('use');
+
+			if (useEl) {
+				useEl.setAttribute('href', clayIconsUrl + '#' + icon);
+			}
+		}
+
+		/* Direct reply counts for the given messages, from one request that
+		   reads only each reply's parent id. An Aggregation field cannot count
+		   them: Liferay's aggregation query for a self relationship compares
+		   the parent row's own foreign key and always returns 0. */
+		function fetchReplyCounts(parentMessageIds) {
+			if (!parentMessageIds.length) {
+				return Promise.resolve({});
+			}
+
+			const parentFilter = parentMessageIds
+				.map((id) => {
+					return "r_messageReplies_c_c2m0MessageId eq '" + id + "'";
+				})
+				.join(' or ');
+
+			return Liferay.Util.fetch(
+				portalURL +
+					'/o/c/c2m0messages/scopes/' +
+					scopeGroupId +
+					'?fields=id,r_messageReplies_c_c2m0MessageId&filter=' +
+					encodeURIComponent(
+						"r_threadMessages_c_c2m0ThreadId eq '" +
+							messageId +
+							"' and (" +
+							parentFilter +
+							')'
+					) +
+					'&pageSize=-1',
+				{
+					headers,
+					method: 'GET',
+				}
+			)
+				.then((r) => {
+					return r.json();
+				})
+				.then((data) => {
+					const counts = {};
+
+					((data && data.items) || []).forEach(
+						({r_messageReplies_c_c2m0MessageId: parentId}) => {
+							counts[parentId] = (counts[parentId] || 0) + 1;
+						}
+					);
+
+					return counts;
+				})
+				.catch((error) => {
+					console.error('Reply counts error:', error);
+
+					return {};
+				});
+		}
+
+		/* Adds the replies toggle under every rendered card that has replies */
+		function applyReplyCounts(counts) {
+			Object.keys(counts).forEach((parentMessageId) => {
+				messageDetail
+					.querySelectorAll(
+						'.forums-message-detail__reply-card[data-message-id="' +
+							parentMessageId +
+							'"]'
+					)
+					.forEach((card) => {
+						const next = card.nextElementSibling;
+
+						if (
+							next &&
+							next.classList.contains('forums-replies-toggle')
+						) {
+							return;
+						}
+
+						card.insertAdjacentHTML(
+							'afterend',
+							renderRepliesToggle(
+								parentMessageId,
+								counts[parentMessageId],
+								parseInt(card.dataset.replyDepth, 10) || 0
+							)
+						);
+					});
+			});
+		}
+
+		function findRepliesToggle(parentMessageId) {
+			return messageDetail.querySelector(
+				'.forums-replies-toggle[data-parent-message-id="' +
+					parentMessageId +
+					'"]'
+			);
+		}
+
+		function findRepliesContainer(parentMessageId) {
+			return messageDetail.querySelector(
+				'.forums-replies-children[data-parent-message-id="' +
+					parentMessageId +
+					'"]'
+			);
+		}
+
+		/* Direct replies of the given messages, in one request */
+		function fetchReplies(parentMessageIds) {
+			const parentFilter = parentMessageIds
+				.map((id) => {
+					return "r_messageReplies_c_c2m0MessageId eq '" + id + "'";
+				})
+				.join(' or ');
+
+			return Liferay.Util.fetch(
+				portalURL +
+					'/o/c/c2m0messages/scopes/' +
+					scopeGroupId +
+					'?filter=' +
+					encodeURIComponent(
+						"r_threadMessages_c_c2m0ThreadId eq '" +
+							messageId +
+							"' and (" +
+							parentFilter +
+							')'
+					) +
+					'&sort=dateCreated:asc&pageSize=-1' +
+					'&nestedFields=messageAttachments',
+				{
+					headers,
+					method: 'GET',
+				}
+			)
+				.then((r) => {
+					return r.json();
+				})
+				.then((data) => {
+					return (data && data.items) || [];
+				});
+		}
+
+		/* Renders a message's direct replies into its (expanded) container
+		   and wires them up. Returns their IDs; their own toggles come from
+		   applyReplyCounts. */
+		function renderReplies(parentMessageId, replies) {
+			const toggle = findRepliesToggle(parentMessageId);
+			const container = findRepliesContainer(parentMessageId);
+
+			if (!toggle || !container) {
+				return [];
+			}
+
+			const depth = parseInt(toggle.dataset.replyDepth, 10) || 1;
+			const sortedReplies = sortByVoteScore(replies);
+
+			sortedReplies.forEach((reply) => {
+				if (isBanned) {
+					reply.actions = {};
+				}
+
+				replyMessagesMap[reply.id] = reply;
+			});
+
+			// XSS: renderReplyCard sanitizes bodies with sanitizeHTML and
+			// escapes every other value with Liferay.Util.escapeHTML
+
+			container.innerHTML = sortedReplies
+				.map((reply) => {
+					return renderReplyCard(
+						reply,
+						isMessageQuestion && reply.answer === true,
+						depth
+					);
+				})
+				.join('');
+			container.dataset.loaded = 'true';
+			container.hidden = false;
+
+			setRepliesToggleExpanded(toggle, true);
+
+			formatMarkupCodeBlocks(container);
+
+			attachVoteHandlers(container);
+			attachAnswerHandlers(container);
+			attachDeleteHandlers(container);
+			attachEditReplyHandlers(container);
+			attachAttachmentHandlers(container);
+
+			return sortedReplies.map(({id}) => {
+				return id;
+			});
+		}
+
+		/* The user's votes and the reply toggles for newly rendered replies.
+		   Resolves once the toggles are in the page. */
+		function decorateReplies(replyIds) {
+			fetchUserVotes(replyIds, true)
+				.then(() => {
+					replyIds.forEach(renderVoteButtons);
+				})
+				.catch((error) => {
+					console.error('Vote buttons error:', error);
+				});
+
+			return fetchReplyCounts(replyIds).then(applyReplyCounts);
+		}
+
+		/* Loads (once) and shows the direct replies of a message */
+		function expandReplies(parentMessageId) {
+			const toggle = findRepliesToggle(parentMessageId);
+			const container = findRepliesContainer(parentMessageId);
+
+			if (!toggle || !container) {
+				return Promise.resolve();
+			}
+
+			container.hidden = false;
+			setRepliesToggleExpanded(toggle, true);
+
+			if (
+				container.dataset.loaded === 'true' ||
+				container.dataset.loading === 'true'
+			) {
+				return Promise.resolve();
+			}
+
+			container.dataset.loading = 'true';
+			toggle.disabled = true;
+
+			return fetchReplies([parentMessageId])
+				.then((replies) => {
+					return decorateReplies(
+						renderReplies(parentMessageId, replies)
+					);
+				})
+				.catch((error) => {
+					container.hidden = true;
+					setRepliesToggleExpanded(toggle, false);
+
+					console.error('Replies error:', error);
+				})
+				.finally(() => {
+					delete container.dataset.loading;
+					toggle.disabled = false;
+				});
+		}
+
+		/* Opens a whole branch at once: repliesPromise holds the direct
+		   replies of every ancestor on the path (one request, made while the
+		   page loads), rendered level by level with each ancestor's toggle
+		   added from the replies already in hand. */
+		function openReplyPath(path, repliesPromise) {
+			return repliesPromise.then((replies) => {
+				const repliesByParent = {};
+
+				replies.forEach((reply) => {
+					const parentId = String(
+						reply.r_messageReplies_c_c2m0MessageId
+					);
+
+					(repliesByParent[parentId] =
+						repliesByParent[parentId] || []).push(reply);
+				});
+
+				let renderedIds = [];
+
+				path.forEach((ancestorId) => {
+					const children = repliesByParent[String(ancestorId)] || [];
+
+					applyReplyCounts({[ancestorId]: children.length});
+
+					renderedIds = renderedIds.concat(
+						renderReplies(ancestorId, children)
+					);
+				});
+
+				return decorateReplies(renderedIds);
+			});
+		}
+
+		function scrollToTargetReply() {
+			const targetCard = messageDetail.querySelector(
+				'.forums-message-detail__reply-card[data-message-id="' +
+					targetReplyId +
+					'"]'
+			);
+
+			if (targetCard) {
+				setTimeout(() => {
+					targetCard.scrollIntoView({
+						behavior: 'smooth',
+						block: 'center',
+					});
+					targetCard.classList.add(
+						'forums-message-detail__reply-card--targeted'
+					);
+				}, 200);
+			}
+		}
+
+		function collapseReplies(parentMessageId) {
+			const toggle = messageDetail.querySelector(
+				'.forums-replies-toggle[data-parent-message-id="' +
+					parentMessageId +
+					'"]'
+			);
+			const container = messageDetail.querySelector(
+				'.forums-replies-children[data-parent-message-id="' +
+					parentMessageId +
+					'"]'
+			);
+
+			if (toggle && container) {
+				container.hidden = true;
+				setRepliesToggleExpanded(toggle, false);
+			}
+		}
+
+		/* One delegated listener covers every toggle, including those in
+		   replies rendered later */
+		messageDetail.addEventListener('click', (event) => {
+			const toggle = event.target.closest('.forums-replies-toggle');
+
+			if (!toggle || !messageDetail.contains(toggle)) {
+				return;
+			}
+
+			event.preventDefault();
+
+			const {parentMessageId} = toggle.dataset;
+
+			if (toggle.getAttribute('aria-expanded') === 'true') {
+				collapseReplies(parentMessageId);
+			}
+			else {
+				expandReplies(parentMessageId);
+			}
+		});
 
 		/* Attachments embedded on a message via the messageAttachments relationship
 	   nested field. Liferay returns them under the relationship-name key as either a
@@ -927,7 +1326,9 @@ if (messageDetail) {
 		}
 
 		/* Fetch current user's votes for all messages in this message */
-		function fetchUserVotes(messageIds) {
+		/* merge keeps the votes already known, for replies expanded after the
+		   page rendered */
+		function fetchUserVotes(messageIds, merge) {
 			if (
 				!messageIds ||
 				!messageIds.length ||
@@ -988,7 +1389,9 @@ if (messageDetail) {
 						canVote = true;
 					}
 					const items = data.items || [];
-					userVoteMap = {};
+					if (!merge) {
+						userVoteMap = {};
+					}
 					const messageIdSet = {};
 					messageIds.forEach((id) => {
 						messageIdSet[id] = true;
@@ -1171,8 +1574,8 @@ if (messageDetail) {
 		}
 
 		/* Attach vote click handlers after rendering */
-		function attachVoteHandlers() {
-			messageDetail
+		function attachVoteHandlers(root = messageDetail) {
+			root
 				.querySelectorAll('.forums-vote__btn')
 				.forEach((button) => {
 					button.addEventListener('click', function (event) {
@@ -1248,8 +1651,8 @@ if (messageDetail) {
 			}
 		}
 
-		function attachAnswerHandlers() {
-			messageDetail
+		function attachAnswerHandlers(root = messageDetail) {
+			root
 				.querySelectorAll('.forums-answer-btn')
 				.forEach((button) => {
 					button.addEventListener('click', function (event) {
@@ -1364,8 +1767,8 @@ if (messageDetail) {
 		}
 
 		/* Delete Reply */
-		function attachDeleteHandlers() {
-			messageDetail
+		function attachDeleteHandlers(root = messageDetail) {
+			root
 				.querySelectorAll('.forums-delete-btn')
 				.forEach((button) => {
 					button.addEventListener('click', function (event) {
@@ -1461,8 +1864,8 @@ if (messageDetail) {
 				});
 		}
 
-		function attachEditReplyHandlers() {
-			messageDetail
+		function attachEditReplyHandlers(root = messageDetail) {
+			root
 				.querySelectorAll('.forums-edit-reply-btn')
 				.forEach((button) => {
 					button.addEventListener('click', function (event) {
@@ -1542,8 +1945,8 @@ if (messageDetail) {
 
 		/* Wire the download control on attachment chips (available to any member).
 	   Removing an attachment lives in the Edit dialog, not this read-only view. */
-		function attachAttachmentHandlers() {
-			messageDetail
+		function attachAttachmentHandlers(root = messageDetail) {
+			root
 				.querySelectorAll('.forums-attachment-download')
 				.forEach((button) => {
 					button.addEventListener('click', function (event) {
@@ -2133,9 +2536,11 @@ if (messageDetail) {
 					/* Fetch messages for this message. On a reply's display
 					   page, open the reply page that holds it first. */
 					(targetReplyId
-						? findReplyPage(resolvedReply)
-								.then((page) => {
+						? findReplyPage(targetReply)
+								.then(({page, path, repliesPromise}) => {
 									currentReplyPage = page;
+									targetReplyPath = path;
+									targetReplyPathReplies = repliesPromise;
 								})
 								.catch((error) => {
 									console.error(
@@ -2236,53 +2641,6 @@ if (messageDetail) {
 				});
 		}
 
-		/* Nested replies of the given messages, level by level, so a page of
-		   top-level replies always renders with its whole subtree and a reply
-		   never lands on a different page than its parent. */
-		function fetchReplyDescendants(parents, depth) {
-			if (!parents.length || depth >= maxReplyDepth) {
-				return Promise.resolve([]);
-			}
-
-			const parentFilter = parents
-				.map(({id}) => {
-					return "r_messageReplies_c_c2m0MessageId eq '" + id + "'";
-				})
-				.join(' or ');
-
-			return Liferay.Util.fetch(
-				portalURL +
-					'/o/c/c2m0messages/scopes/' +
-					scopeGroupId +
-					'?filter=' +
-					encodeURIComponent(
-						"r_threadMessages_c_c2m0ThreadId eq '" +
-							messageId +
-							"' and (" +
-							parentFilter +
-							')'
-					) +
-					'&sort=dateCreated:asc&pageSize=-1' +
-					'&nestedFields=messageAttachments',
-				{
-					headers,
-					method: 'GET',
-				}
-			)
-				.then((r) => {
-					return r.json();
-				})
-				.then((data) => {
-					const children = (data && data.items) || [];
-
-					return fetchReplyDescendants(children, depth + 1).then(
-						(descendants) => {
-							return children.concat(descendants);
-						}
-					);
-				});
-		}
-
 		/* Filter for the paged list: the thread's top-level replies, the OP
 		   included. The accepted answer renders on its own, above the pages,
 		   so it is left out when there is one. */
@@ -2304,7 +2662,7 @@ if (messageDetail) {
 				portalURL +
 					'/o/c/c2m0messages/' +
 					replyMessageId +
-					'?fields=answer,id,r_messageReplies_c_c2m0MessageId',
+					'?fields=answer,id,r_messageReplies_c_c2m0MessageId,treePath',
 				{
 					headers,
 					method: 'GET',
@@ -2314,31 +2672,41 @@ if (messageDetail) {
 			});
 		}
 
-		/* Walks up from a reply to its top-level reply. Stops early at the
-		   accepted answer, which renders with page 1 along with its replies. */
-		function findTopLevelReply(msg, depth) {
+		/* Walks up from a reply to its top-level reply, collecting the
+		   ancestors to expand (top-level first) so the reply is rendered.
+		   Stops early at the accepted answer, which renders above the pages. */
+		function findTopLevelReply(msg, depth, path) {
 			if (isMessageQuestion && threadHasAnswer && msg.answer === true) {
-				return Promise.resolve({message: msg, underAnswer: true});
+				return Promise.resolve({message: msg, path, underAnswer: true});
 			}
 
 			const parentId = msg.r_messageReplies_c_c2m0MessageId;
 
 			if (!parentId || depth >= maxReplyDepth) {
-				return Promise.resolve({message: msg, underAnswer: false});
+				return Promise.resolve({
+					message: msg,
+					path,
+					underAnswer: false,
+				});
 			}
 
 			return fetchReplyTreeNode(parentId).then((parent) => {
 				if (!parent) {
-					return {message: msg, underAnswer: false};
+					return {message: msg, path, underAnswer: false};
 				}
 
-				return findTopLevelReply(parent, depth + 1);
+				return findTopLevelReply(
+					parent,
+					depth + 1,
+					[parent.id].concat(path)
+				);
 			});
 		}
 
-		/* The reply page that renders the targeted reply: the page holding its
+		/* The reply page that renders the targeted reply (the page holding its
 		   top-level reply, found by position in the same list the pages are
-		   cut from. Only ids are read, and only on a reply's display page. */
+		   cut from) and the ancestors to expand down to it. Only ids are
+		   read, and only on a reply's display page. */
 		function findReplyPage(reply) {
 			return (
 				reply
@@ -2346,11 +2714,43 @@ if (messageDetail) {
 					: fetchReplyTreeNode(targetReplyId)
 			)
 				.then((msg) => {
-					return msg ? findTopLevelReply(msg, 0) : null;
+					if (!msg) {
+						return null;
+					}
+
+					/* treePath already lists the ancestors, top-level reply
+					   first; replies written before it existed are walked up */
+					const ancestorIds = (msg.treePath || '')
+						.split('/')
+						.filter(Boolean);
+
+					if (msg.treePath) {
+						return {
+							message: {id: ancestorIds[0] || msg.id},
+							path: ancestorIds,
+							underAnswer: false,
+						};
+					}
+
+					return findTopLevelReply(msg, 0, []);
 				})
 				.then((result) => {
-					if (!result || result.underAnswer) {
-						return 1;
+					if (!result) {
+						return {page: 1, path: [], repliesPromise: null};
+					}
+
+					/* The branch's replies load alongside the page lookup and
+					   the page itself */
+					const repliesPromise = result.path.length
+						? fetchReplies(result.path).catch((error) => {
+								console.error('Reply branch error:', error);
+
+								return [];
+							})
+						: null;
+
+					if (result.underAnswer) {
+						return {page: 1, path: result.path, repliesPromise};
 					}
 
 					return Liferay.Util.fetch(
@@ -2375,9 +2775,15 @@ if (messageDetail) {
 								return String(id) === String(result.message.id);
 							});
 
-							return index < 0
-								? 1
-								: Math.floor(index / replyPageSize) + 1;
+							return {
+								page:
+									index < 0
+										? 1
+										: Math.floor(index / replyPageSize) +
+											1,
+								path: result.path,
+								repliesPromise,
+							};
 						});
 				});
 		}
@@ -2469,35 +2875,16 @@ if (messageDetail) {
 					return r.json();
 				})
 				.then((data) => {
-					const topLevelMessages = data.items || [];
-
-					/* The accepted answer renders on its own, above the
-					   pages; replies to it load with page 1 so they show
-					   exactly once */
-					return fetchReplyDescendants(
-						answerMessage && currentReplyPage === 1
-							? topLevelMessages.concat(answerMessage)
-							: topLevelMessages,
-						0
-					).then((descendants) => {
-						/* The OP leads the list whenever it was fetched on
-						   its own, just as it leads page 1 */
-						return {
-							...data,
-							items: (originalPostMessage
-								? [originalPostMessage]
-								: []
-							).concat(
-								topLevelMessages,
-								descendants.filter(({id}) => {
-									return (
-										!answerMessage ||
-										id !== answerMessage.id
-									);
-								})
-							),
-						};
-					});
+					/* Nested replies load on demand from each card's replies
+					   toggle. The OP leads the list whenever it was fetched on
+					   its own, just as it leads page 1. */
+					return {
+						...data,
+						items: (originalPostMessage
+							? [originalPostMessage]
+							: []
+						).concat(data.items || []),
+					};
 				})
 				.then((data) => {
 					const messages = data.items || [];
@@ -2553,6 +2940,10 @@ if (messageDetail) {
 					/* Render right away and apply the user's votes when they
 					   arrive: they only affect the vote buttons' state */
 					const userVotesPromise = fetchUserVotes(allMsgIds);
+
+					/* Applied to the cards renderMessages draws right below;
+					   the request resolves after they are in the page */
+					fetchReplyCounts(allMsgIds).then(applyReplyCounts);
 
 					const renderMessages = () => {
 
@@ -3038,23 +3429,29 @@ if (messageDetail) {
 						}
 
 						/* Scroll to a specific reply when the fragment is on a Forum Message Display Page */
-						if (targetReplyId) {
-							const targetCard = messageDetail.querySelector(
-								'.forums-message-detail__reply-card[data-message-id="' +
-									targetReplyId +
-									'"]'
-							);
-							if (targetCard) {
-								setTimeout(() => {
-									targetCard.scrollIntoView({
-										behavior: 'smooth',
-										block: 'center',
-									});
-									targetCard.classList.add(
-										'forums-message-detail__reply-card--targeted'
-									);
-								}, 200);
-							}
+						if (targetReplyId && targetReplyPath) {
+							const path = targetReplyPath;
+
+							targetReplyPath = null;
+
+							const repliesPromise = targetReplyPathReplies;
+
+							targetReplyPathReplies = null;
+
+							/* The top-level ancestor's card is on this page;
+							   every deeper level renders from the one branch
+							   request */
+							(path.length && repliesPromise
+								? openReplyPath(path, repliesPromise)
+								: Promise.resolve()
+							)
+								.catch((error) => {
+									console.error('Reply branch error:', error);
+								})
+								.then(scrollToTargetReply);
+						}
+						else if (targetReplyId) {
+							scrollToTargetReply();
 						}
 
 						/* Reply pagination */

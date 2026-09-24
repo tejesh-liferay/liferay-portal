@@ -7,7 +7,9 @@ package com.liferay.forums;
 
 import com.liferay.client.extension.util.spring.boot3.BaseRestController;
 import com.liferay.client.extension.util.spring.boot3.client.LiferayOAuth2AccessTokenManager;
+import com.liferay.forums.service.ForumMessageService;
 import com.liferay.forums.service.ForumModerationService;
+import com.liferay.petra.string.StringBundler;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -138,6 +140,46 @@ public class ObjectValidationRuleRestController extends BaseRestController {
 		return _respond(payloadJSONObject, allowed);
 	}
 
+	@PostMapping("/tree-path")
+	public ResponseEntity<String> treePath(
+		@AuthenticationPrincipal Jwt jwt, @RequestBody String json) {
+
+		if (jwt != null) {
+			log(jwt, _log, json);
+		}
+
+		JSONObject payloadJSONObject = new JSONObject(json);
+
+		// Messages written before treePath existed have none until they are
+		// backfilled; forums-message-detail falls back to walking up their
+		// parents, so an empty path is allowed rather than blocking edits.
+		// Unlike the other rules, this one does not skip the service account:
+		// Liferay calls every validation rule as that account, whoever made
+		// the change, and the microservice's own writes keep a message's path
+		// anyway.
+
+		String treePath = payloadJSONObject.optString("treePath", "");
+
+		if (treePath.isEmpty()) {
+			return _respond(payloadJSONObject, true);
+		}
+
+		long parentMessageId = payloadJSONObject.optLong(
+			"r_messageReplies_c_c2m0MessageId");
+
+		boolean valid = _forumMessageService.isTreePathValid(
+			treePath, parentMessageId, _serviceAuthToken());
+
+		if (!valid && _log.isInfoEnabled()) {
+			_log.info(
+				StringBundler.concat(
+					"Refused tree path \"", treePath, "\" under message ",
+					parentMessageId));
+		}
+
+		return _respond(payloadJSONObject, valid);
+	}
+
 	private boolean _isServiceAccountActor(Jwt jwt) {
 		if (jwt == null) {
 			return false;
@@ -207,6 +249,9 @@ public class ObjectValidationRuleRestController extends BaseRestController {
 
 	private static final Log _log = LogFactory.getLog(
 		ObjectValidationRuleRestController.class);
+
+	@Autowired
+	private ForumMessageService _forumMessageService;
 
 	@Autowired
 	private ForumModerationService _forumModerationService;
