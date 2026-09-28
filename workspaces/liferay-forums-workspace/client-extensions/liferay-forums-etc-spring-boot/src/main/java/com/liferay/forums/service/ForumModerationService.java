@@ -185,6 +185,40 @@ public class ForumModerationService {
 		}
 	}
 
+	// The stored entry, or null when there is none yet (a new entry) or it
+	// cannot be read
+
+	public JSONObject fetchStoredEntry(
+		String restPath, String externalReferenceCode, long siteId,
+		String authToken) {
+
+		if ((externalReferenceCode == null) ||
+			externalReferenceCode.isEmpty() || (siteId <= 0)) {
+
+			return null;
+		}
+
+		try {
+			return new JSONObject(
+				_liferayApiClient.get(
+					StringBundler.concat(
+						"/o/c/", restPath, "/scopes/", siteId,
+						"/by-external-reference-code/",
+						_encode(externalReferenceCode)),
+					authToken));
+		}
+		catch (Exception exception) {
+			if (_log.isDebugEnabled()) {
+				_log.debug(
+					StringBundler.concat(
+						"Unable to read the stored ", restPath, " ",
+						externalReferenceCode, ": ", exception.getMessage()));
+			}
+
+			return null;
+		}
+	}
+
 	public boolean forumThreadExists(
 		String threadERC, long siteId, String authToken) {
 

@@ -11,9 +11,15 @@ import com.liferay.forums.service.ForumMessageService;
 import com.liferay.forums.service.ForumModerationService;
 import com.liferay.petra.string.StringBundler;
 
+import java.math.BigDecimal;
+
+import java.util.Objects;
+import java.util.Set;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,14 +49,15 @@ public class ObjectValidationRuleRestController extends BaseRestController {
 
 		JSONObject payloadJSONObject = new JSONObject(json);
 
-		if (_isServiceAccountActor(jwt)) {
+		String authToken = _serviceAuthToken();
+
+		long siteId = _resolveSiteIdByThread(payloadJSONObject, authToken);
+
+		if (_isOwnFieldsOnlyUpdate(payloadJSONObject, siteId, authToken)) {
 			return _respond(payloadJSONObject, true);
 		}
 
-		String authToken = _serviceAuthToken();
-
 		long creatorUserId = _resolveCreatorUserId(payloadJSONObject);
-		long siteId = _resolveSiteIdByThread(payloadJSONObject, authToken);
 
 		boolean banned = _forumModerationService.isBanned(
 			creatorUserId, siteId, authToken);
@@ -72,7 +79,13 @@ public class ObjectValidationRuleRestController extends BaseRestController {
 
 		JSONObject payloadJSONObject = new JSONObject(json);
 
-		if (_isServiceAccountActor(jwt)) {
+		String authToken = _serviceAuthToken();
+
+		if (_isOwnFieldsOnlyUpdate(
+				payloadJSONObject,
+				_resolveSiteIdByThread(payloadJSONObject, authToken),
+				authToken)) {
+
 			return _respond(payloadJSONObject, true);
 		}
 
@@ -80,7 +93,7 @@ public class ObjectValidationRuleRestController extends BaseRestController {
 			"r_threadMessages_c_c2m0ThreadId");
 
 		boolean locked = _forumModerationService.isThreadLocked(
-			threadId, _serviceAuthToken());
+			threadId, authToken);
 
 		if (locked && _log.isInfoEnabled()) {
 			_log.info("Refused a message on locked thread " + threadId);
@@ -99,18 +112,6 @@ public class ObjectValidationRuleRestController extends BaseRestController {
 
 		JSONObject payloadJSONObject = new JSONObject(json);
 
-		// Like "ban" and "locked", this re-runs on every write to a thread,
-		// not just its creation. ForumThreadRestController bumps a thread's
-		// lastPostDate on every message posted to it, as the service
-		// account — without this skip, that write re-evaluates this
-		// validation (and pays for a site resolution and a thread lookup)
-		// on every single reply, for a priority check that has nothing to
-		// do with lastPostDate.
-
-		if (_isServiceAccountActor(jwt)) {
-			return _respond(payloadJSONObject, true);
-		}
-
 		double priority = payloadJSONObject.optDouble("priority", 0);
 
 		if (priority <= 0) {
@@ -121,7 +122,8 @@ public class ObjectValidationRuleRestController extends BaseRestController {
 
 		long siteId = _resolveSiteIdByThread(payloadJSONObject, authToken);
 
-		if (_forumModerationService.isThreadPriorityUnchanged(
+		if (_isOwnFieldsOnlyUpdate(payloadJSONObject, siteId, authToken) ||
+			_forumModerationService.isThreadPriorityUnchanged(
 				payloadJSONObject.optString("externalReferenceCode"), priority,
 				siteId, authToken)) {
 
@@ -152,11 +154,7 @@ public class ObjectValidationRuleRestController extends BaseRestController {
 
 		// Messages written before treePath existed have none until they are
 		// backfilled; forums-message-detail falls back to walking up their
-		// parents, so an empty path is allowed rather than blocking edits.
-		// Unlike the other rules, this one does not skip the service account:
-		// Liferay calls every validation rule as that account, whoever made
-		// the change, and the microservice's own writes keep a message's path
-		// anyway.
+		// parents, so an empty path is allowed rather than blocking edits
 
 		String treePath = payloadJSONObject.optString("treePath", "");
 
@@ -164,11 +162,21 @@ public class ObjectValidationRuleRestController extends BaseRestController {
 			return _respond(payloadJSONObject, true);
 		}
 
+		String authToken = _serviceAuthToken();
+
+		if (_isOwnFieldsOnlyUpdate(
+				payloadJSONObject,
+				_resolveSiteIdByThread(payloadJSONObject, authToken),
+				authToken)) {
+
+			return _respond(payloadJSONObject, true);
+		}
+
 		long parentMessageId = payloadJSONObject.optLong(
 			"r_messageReplies_c_c2m0MessageId");
 
 		boolean valid = _forumMessageService.isTreePathValid(
-			treePath, parentMessageId, _serviceAuthToken());
+			treePath, parentMessageId, authToken);
 
 		if (!valid && _log.isInfoEnabled()) {
 			_log.info(
@@ -180,13 +188,88 @@ public class ObjectValidationRuleRestController extends BaseRestController {
 		return _respond(payloadJSONObject, valid);
 	}
 
-	private boolean _isServiceAccountActor(Jwt jwt) {
-		if (jwt == null) {
+	private boolean _equals(Object value1, Object value2) {
+		if ((value1 == null) || JSONObject.NULL.equals(value1)) {
+			value1 = "";
+		}
+
+		if ((value2 == null) || JSONObject.NULL.equals(value2)) {
+			value2 = "";
+		}
+
+		if ((value1 instanceof Number) && (value2 instanceof Number)) {
+			BigDecimal bigDecimal1 = new BigDecimal(value1.toString());
+
+			if (bigDecimal1.compareTo(new BigDecimal(value2.toString())) == 0) {
+				return true;
+			}
+
 			return false;
 		}
 
-		return _SERVICE_ACCOUNT_USER_NAME.equals(
-			jwt.getClaimAsString("username"));
+		if ((value1 instanceof JSONObject) && (value2 instanceof JSONObject)) {
+			JSONObject jsonObject1 = (JSONObject)value1;
+
+			return jsonObject1.similar(value2);
+		}
+
+		if ((value1 instanceof JSONArray) && (value2 instanceof JSONArray)) {
+			JSONArray jsonArray1 = (JSONArray)value1;
+
+			return jsonArray1.similar(value2);
+		}
+
+		return Objects.equals(String.valueOf(value1), String.valueOf(value2));
+	}
+
+	// Liferay calls object validation rules as the service account whoever
+	// made the change, and sends only the entry, so a rule cannot tell a
+	// user's write from this microservice's own. An update that changes only
+	// fields this microservice owns (a thread's lastPostDate, a message's
+	// notification fields) is its own and passes; a new entry, or an update
+	// that changes anything else, is validated.
+
+	private boolean _isOwnFieldsOnlyUpdate(
+		JSONObject payloadJSONObject, long siteId, String authToken) {
+
+		String restPath = "c2m0threads";
+
+		if (payloadJSONObject.has("r_threadMessages_c_c2m0ThreadId")) {
+			restPath = "c2m0messages";
+		}
+
+		JSONObject storedJSONObject = _forumModerationService.fetchStoredEntry(
+			restPath, payloadJSONObject.optString("externalReferenceCode"),
+			siteId, authToken);
+
+		if (storedJSONObject == null) {
+			return false;
+		}
+
+		for (String key : payloadJSONObject.keySet()) {
+			if (_ownFieldNames.contains(key) ||
+				_uncomparedFieldNames.contains(key)) {
+
+				continue;
+			}
+
+			if (!_equals(
+					payloadJSONObject.opt(key), storedJSONObject.opt(key))) {
+
+				if (_log.isDebugEnabled()) {
+					_log.debug(
+						StringBundler.concat(
+							"Validating ", restPath, " ",
+							payloadJSONObject.optString(
+								"externalReferenceCode"),
+							" because \"", key, "\" changed"));
+				}
+
+				return false;
+			}
+		}
+
+		return true;
 	}
 
 	private long _resolveCreatorUserId(JSONObject payloadJSONObject) {
@@ -244,11 +327,20 @@ public class ObjectValidationRuleRestController extends BaseRestController {
 	private static final String _OAUTH_APPLICATION_HEADLESS_SERVER_ERC =
 		"liferay-forums-etc-spring-boot-oahs";
 
-	private static final String _SERVICE_ACCOUNT_USER_NAME =
-		"default-service-account";
-
 	private static final Log _log = LogFactory.getLog(
 		ObjectValidationRuleRestController.class);
+
+	private static final Set<String> _ownFieldNames = Set.of(
+		"lastPostDate", "notificationAuthorName", "notificationBody",
+		"notificationMentionRecipientIds", "notificationReplyRecipientIds",
+		"notificationTopicTitle");
+
+	// Audit fields change on every write, and Aggregation fields are computed
+
+	private static final Set<String> _uncomparedFieldNames = Set.of(
+		"answerCount", "creator", "dateCreated", "dateModified",
+		"externalReferenceCode", "id", "messageCount", "status",
+		"validatedFlagCount", "voteTotal");
 
 	@Autowired
 	private ForumMessageService _forumMessageService;
