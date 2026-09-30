@@ -62,11 +62,27 @@ public class ObjectValidationRuleRestController extends BaseRestController {
 		boolean banned = _forumModerationService.isBanned(
 			creatorUserId, siteId, authToken);
 
-		if (banned && _log.isInfoEnabled()) {
+		if (!banned) {
+			return _respond(payloadJSONObject, true);
+		}
+
+		if (_log.isInfoEnabled()) {
 			_log.info("Refused a post from banned user " + creatorUserId);
 		}
 
-		return _respond(payloadJSONObject, !banned);
+		// The ban runs on messages only, because a thread's payload carries
+		// nothing that resolves its site. A refused root message is the first
+		// post of a new discussion, so the thread created for it goes too.
+
+		if (payloadJSONObject.optLong("r_messageReplies_c_c2m0MessageId", 0L) <=
+				0L) {
+
+			_forumModerationService.deleteForumThreadWithoutMessages(
+				payloadJSONObject.optLong("r_threadMessages_c_c2m0ThreadId"),
+				creatorUserId, authToken);
+		}
+
+		return _respond(payloadJSONObject, false);
 	}
 
 	@PostMapping("/locked")
@@ -100,46 +116,6 @@ public class ObjectValidationRuleRestController extends BaseRestController {
 		}
 
 		return _respond(payloadJSONObject, !locked);
-	}
-
-	@PostMapping("/priority")
-	public ResponseEntity<String> priority(
-		@AuthenticationPrincipal Jwt jwt, @RequestBody String json) {
-
-		if (jwt != null) {
-			log(jwt, _log, json);
-		}
-
-		JSONObject payloadJSONObject = new JSONObject(json);
-
-		double priority = payloadJSONObject.optDouble("priority", 0);
-
-		if (priority <= 0) {
-			return _respond(payloadJSONObject, true);
-		}
-
-		String authToken = _serviceAuthToken();
-
-		long siteId = _resolveSiteIdByThread(payloadJSONObject, authToken);
-
-		if (_isOwnFieldsOnlyUpdate(payloadJSONObject, siteId, authToken) ||
-			_forumModerationService.isThreadPriorityUnchanged(
-				payloadJSONObject.optString("externalReferenceCode"), priority,
-				siteId, authToken)) {
-
-			return _respond(payloadJSONObject, true);
-		}
-
-		long creatorUserId = _resolveCreatorUserId(payloadJSONObject);
-
-		boolean allowed = _forumModerationService.canModerateForum(
-			creatorUserId, authToken);
-
-		if (!allowed && _log.isInfoEnabled()) {
-			_log.info("Refused a thread priority set by user " + creatorUserId);
-		}
-
-		return _respond(payloadJSONObject, allowed);
 	}
 
 	@PostMapping("/tree-path")
@@ -232,11 +208,7 @@ public class ObjectValidationRuleRestController extends BaseRestController {
 	private boolean _isOwnFieldsOnlyUpdate(
 		JSONObject payloadJSONObject, long siteId, String authToken) {
 
-		String restPath = "c2m0threads";
-
-		if (payloadJSONObject.has("r_threadMessages_c_c2m0ThreadId")) {
-			restPath = "c2m0messages";
-		}
+		String restPath = "c2m0messages";
 
 		JSONObject storedJSONObject = _forumModerationService.fetchStoredEntry(
 			restPath, payloadJSONObject.optString("externalReferenceCode"),
@@ -283,12 +255,10 @@ public class ObjectValidationRuleRestController extends BaseRestController {
 		return 0L;
 	}
 
-	// "ban" runs on C2M0Message (has a parent thread relationship) and on
-	// C2M0Thread itself; "priority" runs only on C2M0Thread. Prefer whatever
-	// the payload already carries; only reach for the thread lookup (an API
-	// call) when the payload has no groupId of its own. An existing thread
-	// carries its own id, so both cases resolve through it; a brand new
-	// thread's first post carries neither and this returns 0.
+	// Every rule runs on C2M0Message, whose parent thread relationship
+	// resolves the site: Liferay sends a validation rule neither the entry's
+	// groupId nor its id, so prefer a groupId should one ever be present and
+	// otherwise look the site up through the thread (an API call).
 
 	private long _resolveSiteIdByThread(
 		JSONObject payloadJSONObject, String authToken) {
@@ -299,15 +269,9 @@ public class ObjectValidationRuleRestController extends BaseRestController {
 			return siteId;
 		}
 
-		long threadId = payloadJSONObject.optLong(
-			"r_threadMessages_c_c2m0ThreadId", 0L);
-
-		if (threadId <= 0L) {
-			threadId = payloadJSONObject.optLong("id", 0L);
-		}
-
 		return _forumModerationService.resolveSiteIdByThreadId(
-			threadId, authToken);
+			payloadJSONObject.optLong("r_threadMessages_c_c2m0ThreadId", 0L),
+			authToken);
 	}
 
 	private ResponseEntity<String> _respond(

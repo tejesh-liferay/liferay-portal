@@ -185,6 +185,55 @@ public class ForumModerationService {
 		}
 	}
 
+	// A new discussion is a thread followed by its root message. When the
+	// root message is refused, the thread is left with no messages; delete it
+	// only if the same user created it and nothing was posted to it since, so
+	// a refused reply never takes someone else's thread with it.
+
+	public void deleteForumThreadWithoutMessages(
+		long threadId, long userId, String authToken) {
+
+		if ((threadId <= 0) || (userId <= 0)) {
+			return;
+		}
+
+		try {
+			JSONObject threadJSONObject = new JSONObject(
+				_liferayApiClient.get(
+					StringBundler.concat(
+						"/o/c/c2m0threads/", threadId,
+						"?fields=creator,messageCount"),
+					authToken));
+
+			JSONObject creatorJSONObject = threadJSONObject.optJSONObject(
+				"creator");
+
+			if ((creatorJSONObject == null) ||
+				(creatorJSONObject.optLong("id", 0L) != userId) ||
+				(threadJSONObject.optLong("messageCount", -1L) != 0)) {
+
+				return;
+			}
+
+			_liferayApiClient.deleteAsync(
+				"/o/c/c2m0threads/" + threadId, authToken
+			).block();
+
+			if (_log.isInfoEnabled()) {
+				_log.info(
+					StringBundler.concat(
+						"Deleted thread ", threadId, " of banned user ",
+						userId));
+			}
+		}
+		catch (Exception exception) {
+			_log.error(
+				StringBundler.concat(
+					"Unable to delete thread ", threadId, " of banned user ",
+					userId, ": ", exception.getMessage()));
+		}
+	}
+
 	// The stored entry, or null when there is none yet (a new entry) or it
 	// cannot be read
 
@@ -352,43 +401,6 @@ public class ForumModerationService {
 					StringBundler.concat(
 						"Unable to read the lock state of thread ", threadId,
 						": ", exception.getMessage()));
-			}
-
-			return false;
-		}
-	}
-
-	public boolean isThreadPriorityUnchanged(
-		String externalReferenceCode, double priority, long siteId,
-		String authToken) {
-
-		if ((externalReferenceCode == null) ||
-			externalReferenceCode.isEmpty() || (siteId <= 0)) {
-
-			return false;
-		}
-
-		try {
-			JSONObject threadJSONObject = new JSONObject(
-				_liferayApiClient.get(
-					StringBundler.concat(
-						"/o/c/c2m0threads/scopes/", siteId,
-						"/by-external-reference-code/",
-						_encode(externalReferenceCode), "?fields=priority"),
-					authToken));
-
-			if (threadJSONObject.optDouble("priority", -1) == priority) {
-				return true;
-			}
-
-			return false;
-		}
-		catch (Exception exception) {
-			if (_log.isDebugEnabled()) {
-				_log.debug(
-					StringBundler.concat(
-						"Unable to read the stored priority of thread ",
-						externalReferenceCode, ": ", exception.getMessage()));
 			}
 
 			return false;

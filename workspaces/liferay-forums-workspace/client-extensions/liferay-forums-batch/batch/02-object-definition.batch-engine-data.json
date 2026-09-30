@@ -588,6 +588,32 @@
 			"objectActions": [
 				{
 					"active": true,
+					"externalReferenceCode": "C2M0_THREAD_ENFORCE_PRIORITY_ON_ADD_ACTION",
+					"label": {
+						"en_US": "Enforce Priority on Add"
+					},
+					"name": "c2m0ThreadEnforcePriorityOnAdd",
+					"objectActionExecutorKey": "function#liferay-forums-etc-spring-boot-object-action-enforce-thread-priority",
+					"objectActionTriggerKey": "onAfterAdd",
+					"parameters": {
+					},
+					"system": false
+				},
+				{
+					"active": true,
+					"externalReferenceCode": "C2M0_THREAD_ENFORCE_PRIORITY_ON_UPDATE_ACTION",
+					"label": {
+						"en_US": "Enforce Priority on Update"
+					},
+					"name": "c2m0ThreadEnforcePriorityOnUpdate",
+					"objectActionExecutorKey": "function#liferay-forums-etc-spring-boot-object-action-enforce-thread-priority",
+					"objectActionTriggerKey": "onAfterUpdate",
+					"parameters": {
+					},
+					"system": false
+				},
+				{
+					"active": true,
 					"externalReferenceCode": "C2M0_THREAD_RECORD_AUTHOR_ACTION",
 					"label": {
 						"en_US": "Record Author"
@@ -787,32 +813,6 @@
 				}
 			],
 			"objectValidationRules": [
-				{
-					"active": true,
-					"engine": "function#liferay-forums-etc-spring-boot-object-validation-rule-ban",
-					"errorLabel": {
-						"en_US": "Your account has been banned from participating in the forums."
-					},
-					"externalReferenceCode": "C2M0_THREAD_BAN_VALIDATION",
-					"name": {
-						"en_US": "Ban Enforcement"
-					},
-					"outputType": "fullValidation",
-					"script": ""
-				},
-				{
-					"active": true,
-					"engine": "function#liferay-forums-etc-spring-boot-object-validation-rule-priority",
-					"errorLabel": {
-						"en_US": "You are not allowed to set the priority of a discussion."
-					},
-					"externalReferenceCode": "C2M0_THREAD_PRIORITY_VALIDATION",
-					"name": {
-						"en_US": "Thread Priority Enforcement"
-					},
-					"outputType": "fullValidation",
-					"script": ""
-				}
 			],
 			"panelCategoryKey": "",
 			"parameterRequired": false,

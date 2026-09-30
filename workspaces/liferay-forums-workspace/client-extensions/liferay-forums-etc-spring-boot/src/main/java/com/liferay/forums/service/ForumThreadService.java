@@ -24,6 +24,36 @@ import org.springframework.stereotype.Service;
 @Service
 public class ForumThreadService {
 
+	public void revertPriority(
+		long threadId, double priority, String authToken) {
+
+		if (threadId <= 0) {
+			return;
+		}
+
+		try {
+			_liferayApiClient.patch(
+				"/o/c/c2m0threads/" + threadId, authToken,
+				new JSONObject(
+				).put(
+					"priority", priority
+				).toString());
+
+			if (_log.isInfoEnabled()) {
+				_log.info(
+					StringBundler.concat(
+						"Reverted the priority of thread ", threadId, " to ",
+						priority));
+			}
+		}
+		catch (Exception exception) {
+			_log.error(
+				StringBundler.concat(
+					"Unable to revert the priority of thread ", threadId, ": ",
+					exception.getMessage()));
+		}
+	}
+
 	public void updateLastPostDate(long threadId, String authToken) {
 		if (threadId <= 0) {
 			if (_log.isWarnEnabled()) {

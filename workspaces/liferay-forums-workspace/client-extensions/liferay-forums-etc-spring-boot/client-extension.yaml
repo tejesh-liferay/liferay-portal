@@ -24,6 +24,11 @@ liferay-forums-etc-spring-boot-oaua:
         -   c_c2m0suspiciousactivity.everything.read
         -   c_c2m0thread.everything.read
     type: oAuthApplicationUserAgent
+liferay-forums-etc-spring-boot-object-action-enforce-thread-priority:
+    name: Liferay Forums Etc Spring Boot Object Action Enforce Thread Priority
+    oAuth2ApplicationExternalReferenceCode: liferay-forums-etc-spring-boot-oaua
+    resourcePath: /object-action/enforce-thread-priority
+    type: objectAction
 liferay-forums-etc-spring-boot-object-action-handle-suspicious-activity-update:
     name: Liferay Forums Etc Spring Boot Object Action Handle Suspicious Activity Update
     oAuth2ApplicationExternalReferenceCode: liferay-forums-etc-spring-boot-oaua
@@ -57,7 +62,6 @@ liferay-forums-etc-spring-boot-object-action-updated-reply:
 liferay-forums-etc-spring-boot-object-validation-rule-ban:
     allowedObjectDefinitionNames:
         -   C_C2M0Message
-        -   C_C2M0Thread
     name: Liferay Forums Etc Spring Boot Object Validation Rule Ban
     oAuth2ApplicationExternalReferenceCode: liferay-forums-etc-spring-boot-oaua
     resourcePath: /object-validation-rule/ban
@@ -68,13 +72,6 @@ liferay-forums-etc-spring-boot-object-validation-rule-locked:
     name: Liferay Forums Etc Spring Boot Object Validation Rule Locked
     oAuth2ApplicationExternalReferenceCode: liferay-forums-etc-spring-boot-oaua
     resourcePath: /object-validation-rule/locked
-    type: objectValidationRule
-liferay-forums-etc-spring-boot-object-validation-rule-priority:
-    allowedObjectDefinitionNames:
-        -   C_C2M0Thread
-    name: Liferay Forums Etc Spring Boot Object Validation Rule Priority
-    oAuth2ApplicationExternalReferenceCode: liferay-forums-etc-spring-boot-oaua
-    resourcePath: /object-validation-rule/priority
     type: objectValidationRule
 liferay-forums-etc-spring-boot-object-validation-rule-tree-path:
     allowedObjectDefinitionNames:
