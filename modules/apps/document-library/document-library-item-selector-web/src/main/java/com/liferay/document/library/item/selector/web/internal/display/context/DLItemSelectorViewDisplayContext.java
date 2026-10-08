@@ -74,6 +74,7 @@ import jakarta.portlet.PortletURL;
 
 import jakarta.servlet.http.HttpServletRequest;
 
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -140,6 +141,32 @@ public class DLItemSelectorViewDisplayContext<T extends ItemSelectorCriterion> {
 				(CustomFileItemSelectorCriterion)_itemSelectorCriterion;
 
 			return customFileItemSelectorCriterion.getExtensions();
+		}
+
+		if (_itemSelectorCriterion instanceof InfoItemItemSelectorCriterion) {
+			String[] mimeTypes = _getMimeTypes();
+
+			if (ArrayUtil.isNotEmpty(mimeTypes)) {
+				Set<String> acceptedTypes = new LinkedHashSet<>();
+
+				for (String mimeType : mimeTypes) {
+					if (Validator.isNull(mimeType)) {
+						continue;
+					}
+
+					Set<String> extensions = MimeTypesUtil.getExtensions(
+						mimeType);
+
+					if (extensions.isEmpty()) {
+						acceptedTypes.add(mimeType);
+					}
+					else {
+						acceptedTypes.addAll(extensions);
+					}
+				}
+
+				return acceptedTypes.toArray(new String[0]);
+			}
 		}
 
 		return _dlItemSelectorView.getExtensions();
