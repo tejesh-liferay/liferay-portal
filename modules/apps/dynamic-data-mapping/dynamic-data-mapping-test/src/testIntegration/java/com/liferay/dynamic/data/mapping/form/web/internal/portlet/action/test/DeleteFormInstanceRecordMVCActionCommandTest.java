@@ -1,0 +1,182 @@
+/**
+ * SPDX-FileCopyrightText: (c) 2026 Liferay, Inc. https://liferay.com
+ * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
+ */
+
+package com.liferay.dynamic.data.mapping.form.web.internal.portlet.action.test;
+
+import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
+import com.liferay.dynamic.data.mapping.constants.DDMPortletKeys;
+import com.liferay.dynamic.data.mapping.model.DDMFormInstance;
+import com.liferay.dynamic.data.mapping.model.DDMFormInstanceReport;
+import com.liferay.dynamic.data.mapping.service.DDMFormInstanceRecordLocalService;
+import com.liferay.dynamic.data.mapping.service.DDMFormInstanceReportLocalService;
+import com.liferay.dynamic.data.mapping.test.util.DDMFormInstanceRecordTestUtil;
+import com.liferay.dynamic.data.mapping.test.util.DDMFormInstanceTestUtil;
+import com.liferay.portal.kernel.json.JSONFactoryUtil;
+import com.liferay.portal.kernel.json.JSONObject;
+import com.liferay.portal.kernel.model.Group;
+import com.liferay.portal.kernel.model.Portlet;
+import com.liferay.portal.kernel.model.User;
+import com.liferay.portal.kernel.portlet.PortletConfigFactoryUtil;
+import com.liferay.portal.kernel.portlet.bridges.mvc.MVCActionCommand;
+import com.liferay.portal.kernel.service.CompanyLocalServiceUtil;
+import com.liferay.portal.kernel.service.PortletLocalService;
+import com.liferay.portal.kernel.test.portlet.MockLiferayPortletActionRequest;
+import com.liferay.portal.kernel.test.portlet.MockLiferayPortletActionResponse;
+import com.liferay.portal.kernel.test.rule.AggregateTestRule;
+import com.liferay.portal.kernel.test.rule.DeleteAfterTestRun;
+import com.liferay.portal.kernel.test.util.GroupTestUtil;
+import com.liferay.portal.kernel.test.util.TestPropsValues;
+import com.liferay.portal.kernel.test.util.UserTestUtil;
+import com.liferay.portal.kernel.theme.ThemeDisplay;
+import com.liferay.portal.kernel.util.JavaConstants;
+import com.liferay.portal.kernel.util.LocaleUtil;
+import com.liferay.portal.kernel.util.WebKeys;
+import com.liferay.portal.test.rule.Inject;
+import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
+import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
+
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.ClassRule;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+
+/**
+ * @author Akhash Ramprakash
+ */
+@RunWith(Arquillian.class)
+public class DeleteFormInstanceRecordMVCActionCommandTest {
+
+	@ClassRule
+	@Rule
+	public static final AggregateTestRule aggregateTestRule =
+		new AggregateTestRule(
+			new LiferayIntegrationTestRule(),
+			PermissionCheckerMethodTestRule.INSTANCE);
+
+	@Before
+	public void setUp() throws Exception {
+		_group = GroupTestUtil.addGroup();
+
+		_ddmFormInstance = DDMFormInstanceTestUtil.addDDMFormInstance(
+			_group, TestPropsValues.getUserId());
+	}
+
+	@Test
+	public void testProcessActionWithSelectAll() throws Exception {
+		for (int i = 0; i < 3; i++) {
+			DDMFormInstanceRecordTestUtil.
+				addDDMFormInstanceRecordWithRandomValues(
+					_ddmFormInstance, _group, TestPropsValues.getUserId());
+		}
+
+		DDMFormInstance ddmFormInstance =
+			DDMFormInstanceTestUtil.addDDMFormInstance(
+				_group, TestPropsValues.getUserId());
+
+		DDMFormInstanceRecordTestUtil.addDDMFormInstanceRecordWithRandomValues(
+			ddmFormInstance, _group, TestPropsValues.getUserId());
+
+		_mvcActionCommand.processAction(
+			_getMockLiferayPortletActionRequest(TestPropsValues.getUser()),
+			new MockLiferayPortletActionResponse());
+
+		Assert.assertEquals(
+			0,
+			_ddmFormInstanceRecordLocalService.getFormInstanceRecordsCount(
+				_ddmFormInstance.getFormInstanceId()));
+		Assert.assertEquals(
+			1,
+			_ddmFormInstanceRecordLocalService.getFormInstanceRecordsCount(
+				ddmFormInstance.getFormInstanceId()));
+
+		DDMFormInstanceReport ddmFormInstanceReport =
+			_ddmFormInstanceReportLocalService.
+				getFormInstanceReportByFormInstanceId(
+					_ddmFormInstance.getFormInstanceId());
+
+		JSONObject jsonObject = JSONFactoryUtil.createJSONObject(
+			ddmFormInstanceReport.getData());
+
+		Assert.assertEquals(0, jsonObject.getInt("totalItems"));
+	}
+
+	@Test
+	public void testProcessActionWithSelectAllWithoutPermission()
+		throws Exception {
+
+		DDMFormInstanceRecordTestUtil.addDDMFormInstanceRecordWithRandomValues(
+			_ddmFormInstance, _group, TestPropsValues.getUserId());
+
+		_user = UserTestUtil.addUser();
+
+		_mvcActionCommand.processAction(
+			_getMockLiferayPortletActionRequest(_user),
+			new MockLiferayPortletActionResponse());
+
+		Assert.assertEquals(
+			1,
+			_ddmFormInstanceRecordLocalService.getFormInstanceRecordsCount(
+				_ddmFormInstance.getFormInstanceId()));
+	}
+
+	private MockLiferayPortletActionRequest _getMockLiferayPortletActionRequest(
+			User user)
+		throws Exception {
+
+		MockLiferayPortletActionRequest mockLiferayPortletActionRequest =
+			new MockLiferayPortletActionRequest();
+
+		mockLiferayPortletActionRequest.addParameter(
+			"formInstanceId",
+			String.valueOf(_ddmFormInstance.getFormInstanceId()));
+		mockLiferayPortletActionRequest.addParameter("selectAll", "true");
+
+		Portlet portlet = _portletLocalService.getPortletById(
+			DDMPortletKeys.DYNAMIC_DATA_MAPPING_FORM_ADMIN);
+
+		mockLiferayPortletActionRequest.setAttribute(
+			JavaConstants.JAKARTA_PORTLET_CONFIG,
+			PortletConfigFactoryUtil.create(portlet, null));
+
+		ThemeDisplay themeDisplay = new ThemeDisplay();
+
+		themeDisplay.setCompany(
+			CompanyLocalServiceUtil.getCompany(_group.getCompanyId()));
+		themeDisplay.setLocale(LocaleUtil.getSiteDefault());
+		themeDisplay.setUser(user);
+
+		mockLiferayPortletActionRequest.setAttribute(
+			WebKeys.THEME_DISPLAY, themeDisplay);
+
+		return mockLiferayPortletActionRequest;
+	}
+
+	private DDMFormInstance _ddmFormInstance;
+
+	@Inject
+	private DDMFormInstanceRecordLocalService
+		_ddmFormInstanceRecordLocalService;
+
+	@Inject
+	private DDMFormInstanceReportLocalService
+		_ddmFormInstanceReportLocalService;
+
+	@DeleteAfterTestRun
+	private Group _group;
+
+	@Inject(
+		filter = "mvc.command.name=/dynamic_data_mapping_form/delete_form_instance_record"
+	)
+	private MVCActionCommand _mvcActionCommand;
+
+	@Inject
+	private PortletLocalService _portletLocalService;
+
+	@DeleteAfterTestRun
+	private User _user;
+
+}
