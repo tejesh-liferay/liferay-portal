@@ -49,7 +49,7 @@ public class DeleteFormInstanceRecordMVCActionCommand
 		throws Exception {
 
 		if (ParamUtil.getBoolean(actionRequest, "selectAll")) {
-			_deleteFormInstanceRecords(actionRequest);
+			_deleteFormInstanceRecords(actionRequest, actionResponse);
 
 			return;
 		}
@@ -75,7 +75,8 @@ public class DeleteFormInstanceRecordMVCActionCommand
 		}
 	}
 
-	private void _deleteFormInstanceRecords(ActionRequest actionRequest)
+	private void _deleteFormInstanceRecords(
+			ActionRequest actionRequest, ActionResponse actionResponse)
 		throws Exception {
 
 		BulkSelection<DDMFormInstanceRecord> bulkSelection =
@@ -97,6 +98,8 @@ public class DeleteFormInstanceRecordMVCActionCommand
 			themeDisplay.getUser(), bulkSelection,
 			_deleteDDMFormInstanceRecordBulkSelectionAction,
 			Collections.emptyMap());
+
+		sendRedirect(actionRequest, actionResponse);
 
 		SessionMessages.add(
 			actionRequest, "requestProcessed",
