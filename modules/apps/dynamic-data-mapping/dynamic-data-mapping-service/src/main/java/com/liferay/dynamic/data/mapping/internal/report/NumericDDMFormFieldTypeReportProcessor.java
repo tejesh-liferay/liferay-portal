@@ -113,48 +113,32 @@ public class NumericDDMFormFieldTypeReportProcessor
 					DDMFormInstanceReportConstants.
 						EVENT_DELETE_RECORD_VERSION)) {
 
-			DDMFormInstanceRecord ddmFormInstanceRecord =
-				ddmFormInstanceRecordLocalService.getFormInstanceRecord(
-					formInstanceRecordId);
+			if (_isMaxOrMin(summaryJSONObject, valueBigDecimal)) {
+				List<DDMFormInstanceRecord> ddmFormInstanceRecords =
+					_getFormInstanceRecords(formInstanceRecordId);
 
-			DDMFormInstance ddmFormInstance =
-				ddmFormInstanceRecord.getFormInstance();
+				if (ddmFormInstanceRecords.isEmpty()) {
+					jsonObject.remove("summary");
 
-			List<DDMFormInstanceRecord> ddmFormInstanceRecords =
-				TransformUtil.transform(
-					ddmFormInstance.getFormInstanceRecords(),
-					currentDDMFormInstanceRecord -> {
-						if (formInstanceRecordId ==
-								currentDDMFormInstanceRecord.
-									getFormInstanceRecordId()) {
+					return jsonObject;
+				}
 
-							return null;
-						}
+				List<BigDecimal> valueBigDecimals = _getValueBigDecimals(
+					ddmFormFieldValue.getName(), ddmFormInstanceRecords);
 
-						return currentDDMFormInstanceRecord;
-					});
+				BigDecimal maxValueBigDecimal = Collections.max(
+					valueBigDecimals,
+					Comparator.comparingDouble(Number::doubleValue));
+				BigDecimal minValueBigDecimal = Collections.min(
+					valueBigDecimals,
+					Comparator.comparingDouble(Number::doubleValue));
 
-			if (ddmFormInstanceRecords.isEmpty()) {
-				jsonObject.remove("summary");
-
-				return jsonObject;
+				summaryJSONObject.put(
+					"max", maxValueBigDecimal.toString()
+				).put(
+					"min", minValueBigDecimal.toString()
+				);
 			}
-
-			List<BigDecimal> valueBigDecimals = _getValueBigDecimals(
-				ddmFormFieldValue.getName(), ddmFormInstanceRecords);
-
-			BigDecimal maxValueBigDecimal = Collections.max(
-				valueBigDecimals,
-				Comparator.comparingDouble(Number::doubleValue));
-			BigDecimal minValueBigDecimal = Collections.min(
-				valueBigDecimals,
-				Comparator.comparingDouble(Number::doubleValue));
-
-			summaryJSONObject.put(
-				"max", maxValueBigDecimal.toString()
-			).put(
-				"min", minValueBigDecimal.toString()
-			);
 
 			sumBigDecimal = sumBigDecimal.subtract(valueBigDecimal);
 		}
@@ -240,6 +224,31 @@ public class NumericDDMFormFieldTypeReportProcessor
 		}
 	}
 
+	private List<DDMFormInstanceRecord> _getFormInstanceRecords(
+			long formInstanceRecordId)
+		throws Exception {
+
+		DDMFormInstanceRecord ddmFormInstanceRecord =
+			ddmFormInstanceRecordLocalService.getFormInstanceRecord(
+				formInstanceRecordId);
+
+		DDMFormInstance ddmFormInstance =
+			ddmFormInstanceRecord.getFormInstance();
+
+		return TransformUtil.transform(
+			ddmFormInstance.getFormInstanceRecords(),
+			currentDDMFormInstanceRecord -> {
+				if (formInstanceRecordId ==
+						currentDDMFormInstanceRecord.
+							getFormInstanceRecordId()) {
+
+					return null;
+				}
+
+				return currentDDMFormInstanceRecord;
+			});
+	}
+
 	private List<BigDecimal> _getValueBigDecimals(
 		String ddmFormFieldValueName,
 		List<DDMFormInstanceRecord> ddmFormInstanceRecords) {
@@ -272,6 +281,27 @@ public class NumericDDMFormFieldTypeReportProcessor
 
 				return null;
 			});
+	}
+
+	private boolean _isMaxOrMin(
+		JSONObject summaryJSONObject, BigDecimal valueBigDecimal) {
+
+		if (!summaryJSONObject.has("max") || !summaryJSONObject.has("min")) {
+			return true;
+		}
+
+		BigDecimal maxValueBigDecimal = new BigDecimal(
+			summaryJSONObject.getString("max"));
+		BigDecimal minValueBigDecimal = new BigDecimal(
+			summaryJSONObject.getString("min"));
+
+		if ((valueBigDecimal.compareTo(maxValueBigDecimal) == 0) ||
+			(valueBigDecimal.compareTo(minValueBigDecimal) == 0)) {
+
+			return true;
+		}
+
+		return false;
 	}
 
 	private static final Log _log = LogFactoryUtil.getLog(
