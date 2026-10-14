@@ -193,6 +193,69 @@ public class NumericDDMFormFieldTypeReportProcessorTest {
 		Assert.assertEquals("5", summaryJSONObject.getString("max"));
 		Assert.assertEquals("1", summaryJSONObject.getString("min"));
 		Assert.assertEquals("12", summaryJSONObject.getString("sum"));
+
+		Mockito.verify(
+			ddmFormInstance, Mockito.never()
+		).getFormInstanceRecords();
+	}
+
+	@Test
+	public void testProcessDDMFormInstanceReportOnDeleteEventWhenValueIsMax()
+		throws Exception {
+
+		DDMFormFieldValue ddmFormFieldValue = _mockDDMFormFieldValue(
+			LocaleUtil.US, "field1", "5");
+
+		long formInstanceRecordId = 5;
+
+		DDMFormInstanceRecord ddmFormInstanceRecord =
+			_mockDDMFormInstanceRecord(formInstanceRecordId);
+
+		DDMFormInstance ddmFormInstance = Mockito.mock(DDMFormInstance.class);
+
+		List<DDMFormInstanceRecord> ddmFormInstanceRecords = new ArrayList<>();
+
+		for (int i = _VALUES_MAX_LENGTH - 1; i > 0; i--) {
+			ddmFormInstanceRecords.add(
+				_createDDMFormInstanceRecord(String.valueOf(i)));
+		}
+
+		Mockito.when(
+			ddmFormInstance.getFormInstanceRecords()
+		).thenReturn(
+			ddmFormInstanceRecords
+		);
+
+		Mockito.when(
+			ddmFormInstanceRecord.getFormInstance()
+		).thenReturn(
+			ddmFormInstance
+		);
+
+		JSONObject processedFieldJSONObject =
+			_numericDDMFormFieldTypeReportProcessor.process(
+				ddmFormFieldValue,
+				JSONUtil.put(
+					"summary",
+					JSONUtil.put(
+						"max", "5"
+					).put(
+						"min", "1"
+					).put(
+						"sum", "15"
+					)
+				).put(
+					"totalEntries", 5
+				),
+				formInstanceRecordId,
+				DDMFormInstanceReportConstants.EVENT_DELETE_RECORD_VERSION);
+
+		JSONObject summaryJSONObject = processedFieldJSONObject.getJSONObject(
+			"summary");
+
+		Assert.assertEquals("4", summaryJSONObject.getString("max"));
+		Assert.assertEquals("1", summaryJSONObject.getString("min"));
+		Assert.assertEquals("10", summaryJSONObject.getString("sum"));
 	}
 
 	@Test
