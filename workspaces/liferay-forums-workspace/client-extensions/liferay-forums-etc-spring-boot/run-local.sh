@@ -102,8 +102,8 @@ fi
 
 echo ""
 echo "🚀 Starting liferay-forums-etc-spring-boot from: $(basename "${BOOT_JAR}")"
-echo "   Port:  58082"
-echo "   Ready: http://localhost:58082/ready"
+echo "   Port:  58081"
+echo "   Ready: http://localhost:58081/ready"
 echo ""
 
 # ── Run the Spring Boot application ─────────────────────────────────────────

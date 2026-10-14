@@ -1,5 +1,6 @@
 assemble:
     -   fromTask: bootJar
+    -   from: runtime
 liferay-forums-etc-spring-boot-oahs:
     .serviceAddress: localhost:58081
     .serviceScheme: http
