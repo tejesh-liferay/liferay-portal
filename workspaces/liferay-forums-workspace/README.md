@@ -144,3 +144,15 @@ The script takes these options:
 | `--output-dir <dir>` | Where the generated zips are written. Defaults to `out`. |
 
 Each external reference code must produce a different file name, or the script stops before writing any zip whose name would collide with another.
+
+### On Liferay DXP 2026.Q1
+
+Liferay DXP 2026.Q1 creates the forum's roles without their external reference codes, and only sets them when a site initializer runs again. Until then, moderators do not see **Lock Topic**, and bans are not enforced.
+
+After the first site is created, deploy one site initializer zip a second time. Delete it from `<liferay-home>/osgi/client-extensions`, wait until the Liferay log reports its bundle `STOPPED`, then copy it back in. Liferay runs the initializer again on the existing site, which leaves the site's pages and forum content as they are.
+
+Creating a second site has the same effect, so this is only needed when a single site is created. Signed in as an administrator, check that this address returns the **Forum Banned** role rather than a not found error:
+
+```
+<liferay-url>/o/headless-admin-user/v1.0/roles/by-external-reference-code/FORUM_BANNED
+```
