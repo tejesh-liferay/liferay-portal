@@ -13,11 +13,21 @@ Liferay Forums is delivered as three client extension zips and one script:
 
 ## Requirements
 
-- A self-hosted Liferay DXP.
+- A self-hosted Liferay DXP. On Liferay DXP 2026.Q1, see [On Liferay DXP 2026.Q1](#on-liferay-dxp-2026q1) first.
 
 - Java 17 or later on the machine that runs the microservice, either the Liferay machine or another machine that can reach Liferay over HTTP.
 
 - Bash 4 or later, `unzip`, and `zip` on Linux to run `generate-site-initializer-zips.sh`.
+
+## Deployment Order
+
+Deploy the zips one at a time, in the order of the steps below, into a Liferay that has finished starting. Each zip depends on what the one before it creates:
+
+- The microservice zip registers the OAuth scopes of the objects that exist when it is deployed. Deployed before the batch import finishes, the microservice gets `403 Forbidden` from Liferay, and posting fails.
+
+- The site initializer creates the display pages of the forum's threads and messages. Run while Liferay is still starting, for example from a zip left in `<liferay-home>/osgi/client-extensions` across a restart, it skips them, and every thread link returns a not found page.
+
+To recover from either, deploy the affected zip again: delete it from `<liferay-home>/osgi/client-extensions`, wait until the Liferay log reports its bundle `STOPPED`, then copy it back in. A site initializer deployed again updates the existing site and leaves its pages and forum content as they are, but see [On Liferay DXP 2026.Q1](#on-liferay-dxp-2026q1) before doing so on that release.
 
 ## 1. Deploy the Batch
 
@@ -145,13 +155,28 @@ The script takes these options:
 
 Each external reference code must produce a different file name, or the script stops before writing any zip whose name would collide with another.
 
-### On Liferay DXP 2026.Q1
+## On Liferay DXP 2026.Q1
 
-Liferay DXP 2026.Q1 creates the forum's roles without their external reference codes, and only sets them when a site initializer runs again. Until then, moderators do not see **Lock Topic**, and bans are not enforced.
+Liferay DXP 2026.Q1 has two problems that affect the forum's site initializer:
 
-After the first site is created, deploy one site initializer zip a second time. Delete it from `<liferay-home>/osgi/client-extensions`, wait until the Liferay log reports its bundle `STOPPED`, then copy it back in. Liferay runs the initializer again on the existing site, which leaves the site's pages and forum content as they are.
+| Problem | Fix |
+| --- | --- |
+| The forum's roles are created without their external reference codes, which are only set when a site initializer runs again. Until then, moderators do not see **Lock Topic**, and bans are not enforced. | LPD-112124 |
+| Every time a site initializer runs again on an existing site, the site's friendly URL is reset to `/group-<site ID>`, and the forum's links return a not found page. | LPD-85594, included from Liferay DXP 2026.Q1.12 |
 
-Creating a second site has the same effect, so this is only needed when a single site is created. Signed in as an administrator, check that this address returns the **Forum Banned** role rather than a not found error:
+On Liferay DXP 2026.Q1.4, install hotfix 84 before deploying the zips. It contains both fixes, so neither workaround below is needed:
+
+```
+https://hotfixes.liferay.com/2026.q1.4-lts/liferay-dxp-2026.q1.4-lts-hotfix-84.zip
+```
+
+On other 2026.Q1 releases without these fixes:
+
+1. After the first site is created, deploy one site initializer zip a second time, as described in [Deployment Order](#deployment-order), so that the roles get their external reference codes. Creating a second site has the same effect, so this is only needed when a single site is created.
+
+1. After every site initializer deployment that runs on an existing site, including the one above, check the site's friendly URL in *Site Settings* and set it back if it changed. The forum's pages expect the URL the site was created with, `/forums` for the `FORUMS` site.
+
+Signed in as an administrator, check that this address returns the **Forum Banned** role rather than a not found error:
 
 ```
 <liferay-url>/o/headless-admin-user/v1.0/roles/by-external-reference-code/FORUM_BANNED
