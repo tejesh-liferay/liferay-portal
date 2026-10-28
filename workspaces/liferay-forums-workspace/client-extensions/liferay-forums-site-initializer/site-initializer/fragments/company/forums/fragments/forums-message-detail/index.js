@@ -409,7 +409,8 @@ if (messageDetail) {
 			return;
 		}
 
-		const replyPageSize = 10;
+		const replyPageSize =
+			parseInt(messageDetail.dataset.repliesPageSize, 10) || 10;
 
 		/* Deepest reply nesting loaded under a top-level reply */
 		const maxReplyDepth = 10;

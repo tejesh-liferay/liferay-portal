@@ -101,7 +101,7 @@ if (messageList) {
 	/* State */
 	let currentSort = 'dateCreated:desc';
 	let currentPage = 1;
-	const pageSize = 20;
+	const pageSize = parseInt(messageList.dataset.pageSize, 10) || 20;
 	let categoryId = null;
 	let searchQuery = '';
 	let tagFilter = null;

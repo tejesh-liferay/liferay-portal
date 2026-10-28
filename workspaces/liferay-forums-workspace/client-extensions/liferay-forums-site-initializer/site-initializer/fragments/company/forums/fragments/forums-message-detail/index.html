@@ -2,6 +2,7 @@
 [#assign forumsHome = (themeDisplay.getPathFriendlyURLPublic()!"") + (scopeGroup.getFriendlyURL()!"") /]
 <div
 	class="forums-message-detail" id="forumsMessageDetail"
+	data-replies-page-size="${configuration.repliesPageSize!"10"}"
 	data-label-unknown="${languageUtil.get(locale, "unknown")}"
 	data-label-no-message="${languageUtil.get(locale, "no-message-selected")}"
 	data-label-untitled-message="${languageUtil.get(locale, "untitled-message")}"
