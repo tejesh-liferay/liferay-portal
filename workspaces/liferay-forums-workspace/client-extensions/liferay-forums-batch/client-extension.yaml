@@ -13,4 +13,5 @@ liferay-forums-batch-oahs:
         -   Liferay.Headless.Batch.Engine.everything
         -   Liferay.Object.Admin.REST.everything
         -   Liferay.Notification.REST.everything
+        -   Liferay.Search.Experiences.REST.everything
     type: oAuthApplicationHeadlessServer
