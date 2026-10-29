@@ -155,6 +155,29 @@ The script takes these options:
 
 Each external reference code must produce a different file name, or the script stops before writing any zip whose name would collide with another.
 
+### An Existing Site
+
+To add the forum to a site that already exists, generate a zip whose external reference code is that site's, as described in [Several Sites](#several-sites), and deploy it. The site initializer adds the forum to the site and leaves its existing pages, master pages, style books, and 404 and 500 pages as they are:
+
+- The forum's pages are added to the site's navigation, next to its existing pages. Pages already using the addresses `/forums`, `/search`, `/liferay-learn`, `/help-center`, `/forums-messages`, `/forums-moderation`, `/new-discussion`, or `/forum-categories-admin` are taken over: a page of the same type is renamed and its content replaced, and a page of another type is deleted and created again. Change the address of any such page before deploying.
+
+- The **Forums** master page and **Forums** style book apply only to the forum's pages. The style book is not made the site's default.
+
+## 4. Customize the Site
+
+The site initializer sets the site up as follows. Each part can be changed in Liferay after the site is created, but deploying the site initializer zip again puts back what it creates.
+
+| Part | Where to Change It |
+| --- | --- |
+| Header and footer colors | *Site Builder* → *Style Books* → **Forums**. **Brand Color 1** and **Brand Color 2** are the header's background and text, and **Brand Color 3** and **Brand Color 4** are the footer's. |
+| Header and footer | *Site Builder* → *Master Pages* → **Forums**. Every forum page uses this master page. |
+| Promoted discussions on the home page | Add the tag `promoted` to a thread. The home page shows up to five promoted threads, newest first, from the **Promoted Threads** collection in *Site Builder* → *Collections*. To pick threads by hand instead, create a manual collection there and select it in the home page's **Promoted Discussions** collection display. |
+| Links in the navigation | *Site Builder* → *Pages*. **Liferay Learn** and **Help Center** are link pages; edit their names and addresses, or delete them. |
+| Search page | The search bars send searches to the hidden **Search** page, which shows only threads, through the **Forum Threads** blueprint, with **Category**, **Tag**, **User**, and **Modified** facets. |
+| Threads per page and replies per page | The **Messages Per Page** setting of the list on the **Forums Messages** page, and the **Replies Per Page** setting in the **Forum Thread** display page template. |
+
+The site's 404 and 500 pages are Liferay's defaults, which show no header or footer on a forum site. To give them the forum's header and footer, create a utility page that uses the **Forums** master page in *Site Builder* → *Pages* → *Utility Pages*, and mark it as the default for its error.
+
 ## On Liferay DXP 2026.Q1
 
 Liferay DXP 2026.Q1 has two problems that affect the forum's site initializer:
