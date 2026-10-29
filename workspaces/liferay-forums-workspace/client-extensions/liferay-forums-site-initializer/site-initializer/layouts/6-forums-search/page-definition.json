@@ -24,6 +24,9 @@
 					},
 					{
 						"definition": {
+							"fragmentStyle": {
+								"hidden": true
+							},
 							"widgetInstance": {
 								"widgetConfig": {
 									"sxpBlueprintExternalReferenceCode": "forum-suggestions"
