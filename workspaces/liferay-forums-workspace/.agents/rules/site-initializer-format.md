@@ -144,7 +144,7 @@ client-extensions/<name>/
           page-definition.json
           page-template.json
       master-pages/
-        <master-name>/          # dir name is the master "key" (see settings.masterPage.key)
+        <master-name>/          # the master "key" comes from its name, not this directory (see below)
           page-definition.json
           master-page.json       # {"name": ...} — NOT page-template.json
           thumbnail.png          # optional
@@ -523,7 +523,7 @@ Built in fragments instead use a combined `key` with no `siteKey` (e.g. `"key": 
 
 ## Master Pages
 
-A master page lives under `layout-page-templates/master-pages/<master-name>/` with two files: `master-page.json` (just `{"name": "<Display Name>"}`) and `page-definition.json`. The master's **key is its directory name** (`<master-name>`).
+A master page lives under `layout-page-templates/master-pages/<master-name>/` with two files: `master-page.json` (just `{"name": "<Display Name>"}`) and `page-definition.json`. The master's **key is derived from its name**, not its directory: verified on 2026.Q1.4, where a master named `Forums` in `master-pages/forums-master/` got the key `forums`, and pages pointing at `forums-master` silently kept the default master. Name the directory after the lowercased, hyphenated name so the two agree.
 
 The master `page-definition.json` holds the persistent header/footer fragments plus a **DropZone** marking where each page's own content is injected. The DropZone must carry a `definition.fragmentSettings` block — a bare `{"type": "DropZone"}` does not render. Use the numeric `version` `1.1`:
 
@@ -556,7 +556,7 @@ The master `page-definition.json` holds the persistent header/footer fragments p
 }
 ```
 
-A page selects its master through its **own** `page-definition.json`, in a top level `settings.masterPage.key` whose value is the master's directory name:
+A page selects its master through its **own** `page-definition.json`, in a top level `settings.masterPage.key` whose value is the master's key (derived from its name, see above):
 
 ```json
 {
@@ -591,6 +591,8 @@ Controls theme assignment and theme settings for the public (nonprivate) layout 
 ```
 
 Use the `settings` block to switch off the stock theme chrome when a master page supplies a branded header and footer — otherwise both render, one above the other. Prefer this over hiding `#banner` / `#footer` with CSS: the setting is scoped to this layout set, whereas a `globalCSS` CET is injected instance wide and there is no site specific `body` class to scope such a rule to.
+
+> **These settings apply to the whole site, including pages the tree did not create.** When the initializer may run against an existing site, put the same keys in the **master page's** `page-definition.json` instead, as `settings.themeSettings`. A page that uses a master page reads its theme settings from the master layout (`LayoutImpl.getThemeSetting`, verified on 2026.Q1.4), so the stock header and footer disappear only on pages using that master, and a `themeSettings` block on the page itself is ignored. Check the result signed in: on 2026.Q1.4 a guest request rendered without the stock header even when a signed in user still saw it.
 
 > **A `themeCSS` CET cannot be selected from the initializer tree.** Liferay attaches one through a `ClientExtensionEntryRel` on the layout, the master layout, or the layout set, and `BundleSiteInitializer` has **no handler** that creates that relation — there is no key in `metadata.json` for it either. A deployed themeCSS CET is therefore *available* but not *applied* until someone picks it in Site Administration → Design → Theme, and that selection is lost on every reprovision.
 >
