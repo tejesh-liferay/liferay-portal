@@ -660,13 +660,19 @@
 					"required": false
 				},
 				{
-					"DBType": "Date",
-					"businessType": "Date",
+					"DBType": "DateTime",
+					"businessType": "DateTime",
 					"externalReferenceCode": "LAST_POST_DATE",
 					"label": {
 						"en_US": "Last Post Date"
 					},
 					"name": "lastPostDate",
+					"objectFieldSettings": [
+						{
+							"name": "timeStorage",
+							"value": "convertToUTC"
+						}
+					],
 					"required": false
 				},
 				{

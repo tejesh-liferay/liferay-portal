@@ -8,7 +8,8 @@ package com.liferay.forums.service;
 import com.liferay.forums.client.LiferayApiClient;
 import com.liferay.petra.string.StringBundler;
 
-import java.time.LocalDate;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -72,7 +73,9 @@ public class ForumThreadService {
 				new JSONObject(
 				).put(
 					"lastPostDate",
-					LocalDate.now(
+					Instant.now(
+					).truncatedTo(
+						ChronoUnit.SECONDS
 					).toString()
 				).toString());
 		}
