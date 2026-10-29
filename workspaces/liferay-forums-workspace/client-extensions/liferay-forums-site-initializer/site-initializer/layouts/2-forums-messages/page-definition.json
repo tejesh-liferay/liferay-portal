@@ -3,6 +3,9 @@
 		"pageElements": [
 			{
 				"definition": {
+					"fragmentStyle": {
+						"paddingTop": "4"
+					},
 					"indexed": true,
 					"layout": {
 						"widthType": "Fixed"
@@ -50,6 +53,9 @@
 			},
 			{
 				"definition": {
+					"fragmentStyle": {
+						"paddingBottom": "4"
+					},
 					"indexed": false,
 					"layout": {
 					}
