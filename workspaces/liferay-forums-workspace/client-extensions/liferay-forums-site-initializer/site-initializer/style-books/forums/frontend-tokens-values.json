@@ -1,0 +1,18 @@
+{
+	"brandColor1": {
+		"cssVariableMapping": "brand-color-1",
+		"value": "#0B2D5B"
+	},
+	"brandColor2": {
+		"cssVariableMapping": "brand-color-2",
+		"value": "#FFFFFF"
+	},
+	"brandColor3": {
+		"cssVariableMapping": "brand-color-3",
+		"value": "#071E3D"
+	},
+	"brandColor4": {
+		"cssVariableMapping": "brand-color-4",
+		"value": "#FFFFFF"
+	}
+}

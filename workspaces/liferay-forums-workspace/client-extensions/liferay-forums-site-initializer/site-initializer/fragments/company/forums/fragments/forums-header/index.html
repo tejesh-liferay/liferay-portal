@@ -1,0 +1,31 @@
+[#assign scopeGroup = themeDisplay.getScopeGroup() /]
+[#assign siteName = htmlUtil.escape(scopeGroup.getName(locale)) /]
+<header class="forums-header">
+	<div class="navbar navbar-top py-3">
+		<div class="container-fluid container-fluid-max-xl">
+			<div class="align-items-center autofit-row">
+				<a class="align-items-center d-inline-flex forums-header__brand logo-md" href="${(themeDisplay.getPathFriendlyURLPublic()!"") + (scopeGroup.getFriendlyURL()!"")}" title="${siteName}">
+					<img alt="" class="mr-2" height="56" src="${themeDisplay.getCompanyLogo()}" />
+
+					<span class="font-weight-bold h2 mb-0">${siteName}</span>
+				</a>
+
+				<div class="autofit-col autofit-col-expand">
+					<div class="forums-header__search justify-content-md-end mr-4 navbar-form" role="search">
+						<lfr-drop-zone></lfr-drop-zone>
+					</div>
+				</div>
+
+				<div class="autofit-col forums-header__user">
+					<lfr-drop-zone></lfr-drop-zone>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="navbar navbar-expand-md pb-3">
+		<nav class="container-fluid container-fluid-max-xl forums-header__navigation">
+			<lfr-drop-zone></lfr-drop-zone>
+		</nav>
+	</div>
+</header>

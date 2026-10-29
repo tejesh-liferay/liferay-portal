@@ -28,7 +28,7 @@
 										"definition": {
 											"widgetInstance": {
 												"widgetConfig": {
-													"destination": "/forums-messages",
+													"destination": "/search",
 													"displayStyle": "default",
 													"displayStyleGroupId": "32484264",
 													"federatedSearchKey": "",
@@ -61,6 +61,171 @@
 				"definition": {
 					"indexed": true,
 					"layout": {
+						"widthType": "Fixed"
+					}
+				},
+				"pageElements": [
+					{
+						"definition": {
+							"fragment": {
+								"key": "BASIC_COMPONENT-heading"
+							},
+							"fragmentConfig": {
+								"headingLevel": "h2"
+							},
+							"fragmentFields": [
+								{
+									"id": "element-text",
+									"value": {
+										"fragmentLink": {
+										},
+										"text": {
+											"value_i18n": {
+												"en_US": "Promoted Discussions"
+											}
+										}
+									}
+								}
+							],
+							"fragmentStyle": {
+								"marginBottom": "4",
+								"marginTop": "5"
+							},
+							"indexed": true
+						},
+						"type": "Fragment"
+					},
+					{
+						"definition": {
+							"collectionConfig": {
+								"collectionReference": {
+									"className": "com.liferay.asset.list.model.AssetListEntry",
+									"classPK": "[$ASSET_LIST_ENTRY_ID:PROMOTED-THREADS$]"
+								},
+								"collectionType": "Collection"
+							},
+							"displayAllItems": false,
+							"displayAllPages": false,
+							"emptyCollectionConfig": {
+								"displayMessage": false
+							},
+							"numberOfColumns": 1,
+							"numberOfItems": 5,
+							"numberOfItemsPerPage": 5,
+							"numberOfPages": 1,
+							"paginationType": "None",
+							"showAllItems": false
+						},
+						"pageElements": [
+							{
+								"definition": {
+								},
+								"pageElements": [
+									{
+										"definition": {
+											"fragment": {
+												"key": "forums-thread-card"
+											},
+											"fragmentConfig": {
+											},
+											"fragmentFields": [
+												{
+													"id": "avatar",
+													"value": {
+														"fragmentImage": {
+															"url": {
+																"mapping": {
+																	"fieldKey": "ObjectEntry_userProfileImage",
+																	"itemReference": {
+																		"contextSource": "CollectionItem"
+																	}
+																}
+															}
+														}
+													}
+												},
+												{
+													"id": "author",
+													"value": {
+														"text": {
+															"mapping": {
+																"fieldKey": "ObjectEntry_author",
+																"itemReference": {
+																	"contextSource": "CollectionItem"
+																}
+															}
+														}
+													}
+												},
+												{
+													"id": "title",
+													"value": {
+														"fragmentLink": {
+															"value": {
+																"href": {
+																	"mapping": {
+																		"fieldKey": "ObjectEntry_displayPageURL",
+																		"itemReference": {
+																			"contextSource": "CollectionItem"
+																		}
+																	}
+																}
+															}
+														},
+														"text": {
+															"mapping": {
+																"fieldKey": "ObjectField_title",
+																"itemReference": {
+																	"contextSource": "CollectionItem"
+																}
+															}
+														}
+													}
+												},
+												{
+													"id": "preview",
+													"value": {
+														"text": {
+															"mapping": {
+																"fieldKey": "ObjectField_preview",
+																"itemReference": {
+																	"contextSource": "CollectionItem"
+																}
+															}
+														}
+													}
+												},
+												{
+													"id": "date",
+													"value": {
+														"text": {
+															"mapping": {
+																"fieldKey": "ObjectEntry_createDate",
+																"itemReference": {
+																	"contextSource": "CollectionItem"
+																}
+															}
+														}
+													}
+												}
+											],
+											"indexed": true
+										},
+										"type": "Fragment"
+									}
+								],
+								"type": "CollectionItem"
+							}
+						],
+						"type": "Collection"
+					}
+				],
+				"type": "Section"
+			},
+			{
+				"definition": {
+					"indexed": true,
+					"layout": {
 					}
 				},
 				"pageElements": [
@@ -84,8 +249,9 @@
 		"type": "Root"
 	},
 	"settings": {
-		"colorSchemeName": "01",
-		"themeName": "Classic"
+		"masterPage": {
+			"key": "forums"
+		}
 	},
 	"version": 1.1
 }

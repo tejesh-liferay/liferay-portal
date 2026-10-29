@@ -1,0 +1,22 @@
+.forums-header {
+	background-color: var(--brand-color-1, #0b2d5b);
+	color: var(--brand-color-2, #fff);
+}
+
+.forums-header__brand,
+.forums-header__brand:focus,
+.forums-header__brand:hover {
+	color: inherit;
+	text-decoration: none;
+}
+
+.forums-header__navigation a,
+.forums-header__navigation .nav-link,
+.forums-header__user a,
+.forums-header__user .btn {
+	color: inherit;
+}
+
+.forums-header__search {
+	display: flex;
+}

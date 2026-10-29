@@ -1,0 +1,17 @@
+{
+	"friendlyURL": "/liferay-learn",
+	"friendlyURL_i18n": {
+		"en_US": "/liferay-learn"
+	},
+	"name_i18n": {
+		"en_US": "Liferay Learn"
+	},
+	"private": false,
+	"type": "url",
+	"typeSettings": [
+		{
+			"key": "url",
+			"value": "https://learn.liferay.com"
+		}
+	]
+}

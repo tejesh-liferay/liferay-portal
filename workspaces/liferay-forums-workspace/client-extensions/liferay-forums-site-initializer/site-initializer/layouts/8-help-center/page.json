@@ -1,0 +1,17 @@
+{
+	"friendlyURL": "/help-center",
+	"friendlyURL_i18n": {
+		"en_US": "/help-center"
+	},
+	"name_i18n": {
+		"en_US": "Help Center"
+	},
+	"private": false,
+	"type": "url",
+	"typeSettings": [
+		{
+			"key": "url",
+			"value": "https://help.liferay.com"
+		}
+	]
+}
