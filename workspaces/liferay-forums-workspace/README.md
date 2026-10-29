@@ -165,7 +165,7 @@ To add the forum to a site that already exists, generate a zip whose external re
 
 ## 4. Customize the Site
 
-The site initializer sets the site up as follows. Each part can be changed in Liferay after the site is created, but deploying the site initializer zip again puts back what it creates.
+The site initializer sets the site up as follows. Each part can be changed in Liferay after the site is created. Deploying the site initializer zip again keeps the forum's threads, messages, and categories, and does not change the layout of pages that already exist, so layout changes in a newer zip only appear on pages it creates.
 
 | Part | Where to Change It |
 | --- | --- |
