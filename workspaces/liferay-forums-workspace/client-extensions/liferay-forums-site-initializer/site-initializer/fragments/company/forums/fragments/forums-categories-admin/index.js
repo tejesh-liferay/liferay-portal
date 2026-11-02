@@ -814,7 +814,7 @@ if (forumsCategoriesAdmin) {
 			const cascadeMsg =
 				forumsCategoriesAdmin.dataset
 					.labelConfirmDeleteCategoryWithSubcategories ||
-				'This category has {0} subcategories. Deleting it will also delete them. Topics in these categories are not deleted; they only lose these categories. This action cannot be reverted.';
+				'This category has {0} subcategories. Deleting it will also delete them. Topics that used to belong to this category can still be found in All Discussions. This action cannot be reverted.';
 			message = cascadeMsg.replace('{0}', subcategoryCount);
 		}
 

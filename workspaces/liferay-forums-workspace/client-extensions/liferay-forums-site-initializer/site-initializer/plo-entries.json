@@ -326,19 +326,19 @@
 	{
 		"key": "confirm-delete-category-with-subcategories",
 		"value": {
-			"ar-SA": "تحتوي هذه الفئة على {0} فئة فرعية. سيؤدي حذفها إلى حذف تلك الفئات الفرعية أيضًا. لن تُحذف المواضيع الموجودة في هذه الفئات، بل ستُزال منها هذه الفئات فقط. لا يمكن التراجع عن هذا الإجراء.",
-			"ca-ES": "Aquesta categoria té {0} subcategories. En suprimir-la, també se suprimiran aquestes. Els temes d'aquestes categories no se suprimeixen; només perden aquestes categories. Aquesta acció no es pot desfer.",
-			"de-DE": "Diese Kategorie hat {0} Unterkategorien. Beim Löschen werden auch diese gelöscht. Themen in diesen Kategorien werden nicht gelöscht; ihnen werden nur diese Kategorien entfernt. Diese Aktion kann nicht rückgängig gemacht werden.",
-			"en-US": "This category has {0} subcategories. Deleting it will also delete them. Topics in these categories are not deleted; they only lose these categories. This action cannot be reverted.",
-			"es-ES": "Esta categoría tiene {0} subcategorías. Al eliminarla, también se eliminarán estas. Los temas de estas categorías no se eliminan; solo pierden estas categorías. Esta acción no se puede deshacer.",
-			"fi-FI": "Tällä kategorialla on {0} alakategoriaa. Sen poistaminen poistaa myös ne. Näiden kategorioiden aiheita ei poisteta; niistä poistetaan vain nämä kategoriat. Tätä toimintoa ei voi peruuttaa.",
-			"fr-FR": "Cette catégorie contient {0} sous-catégories. La supprimer supprimera également celles-ci. Les sujets de ces catégories ne sont pas supprimés ; ils perdent seulement ces catégories. Cette action est irréversible.",
-			"hu-HU": "Ennek a kategóriának {0} alkategóriája van. A törlés ezeket is törli. Az ezekben a kategóriákban lévő témák nem törlődnek, csak ezek a kategóriák kerülnek le róluk. Ez a művelet nem vonható vissza.",
-			"ja-JP": "このカテゴリには{0}件のサブカテゴリがあります。削除すると、それらのサブカテゴリも削除されます。これらのカテゴリのトピックは削除されず、これらのカテゴリが外れるだけです。この操作は元に戻せません。",
-			"nl-NL": "Deze categorie heeft {0} subcategorieën. Als u deze verwijdert, worden deze ook verwijderd. Onderwerpen in deze categorieën worden niet verwijderd; ze verliezen alleen deze categorieën. Deze actie kan niet ongedaan worden gemaakt.",
-			"pt-BR": "Esta categoria tem {0} subcategorias. Excluí-la também excluirá essas subcategorias. Os tópicos dessas categorias não são excluídos; apenas deixam de ter essas categorias. Esta ação não pode ser revertida.",
-			"sv-SE": "Den här kategorin har {0} underkategorier. Om du tar bort den tas även dessa bort. Ämnen i dessa kategorier tas inte bort; de förlorar bara dessa kategorier. Denna åtgärd kan inte ångras.",
-			"zh-CN": "此分类下有 {0} 个子分类。删除该分类将同时删除这些子分类。这些分类中的主题不会被删除，只会移除这些分类。此操作无法撤销。"
+			"ar-SA": "تحتوي هذه الفئة على {0} فئة فرعية. سيؤدي حذفها إلى حذف تلك الفئات الفرعية أيضًا. لا يزال بإمكانك العثور على المواضيع التي كانت تنتمي إلى هذه الفئة في \"جميع المناقشات\". لا يمكن التراجع عن هذا الإجراء.",
+			"ca-ES": "Aquesta categoria té {0} subcategories. En suprimir-la, també se suprimiran aquestes. Els temes que pertanyien a aquesta categoria encara es poden trobar a Totes les discussions. Aquesta acció no es pot desfer.",
+			"de-DE": "Diese Kategorie hat {0} Unterkategorien. Beim Löschen werden auch diese gelöscht. Themen, die zu dieser Kategorie gehörten, finden Sie weiterhin unter Alle Diskussionen. Diese Aktion kann nicht rückgängig gemacht werden.",
+			"en-US": "This category has {0} subcategories. Deleting it will also delete them. Topics that used to belong to this category can still be found in All Discussions. This action cannot be reverted.",
+			"es-ES": "Esta categoría tiene {0} subcategorías. Al eliminarla, también se eliminarán estas. Los temas que pertenecían a esta categoría todavía se pueden encontrar en Todas las discusiones. Esta acción no se puede deshacer.",
+			"fi-FI": "Tällä kategorialla on {0} alakategoriaa. Sen poistaminen poistaa myös ne. Tähän kategoriaan kuuluneet aiheet löytyvät edelleen kohdasta Kaikki keskustelut. Tätä toimintoa ei voi peruuttaa.",
+			"fr-FR": "Cette catégorie contient {0} sous-catégories. La supprimer supprimera également celles-ci. Les sujets qui appartenaient à cette catégorie restent accessibles dans Toutes les discussions. Cette action est irréversible.",
+			"hu-HU": "Ennek a kategóriának {0} alkategóriája van. A törlés ezeket is törli. Az ebbe a kategóriába tartozott témák továbbra is megtalálhatók az Összes beszélgetés oldalon. Ez a művelet nem vonható vissza.",
+			"ja-JP": "このカテゴリには{0}件のサブカテゴリがあります。削除すると、それらのサブカテゴリも削除されます。このカテゴリに属していたトピックは、引き続き「すべてのディスカッション」で確認できます。この操作は元に戻せません。",
+			"nl-NL": "Deze categorie heeft {0} subcategorieën. Als u deze verwijdert, worden deze ook verwijderd. Onderwerpen die bij deze categorie hoorden, zijn nog steeds te vinden in Alle discussies. Deze actie kan niet ongedaan worden gemaakt.",
+			"pt-BR": "Esta categoria tem {0} subcategorias. Excluí-la também excluirá essas subcategorias. Os tópicos que pertenciam a esta categoria ainda podem ser encontrados em Todas as discussões. Esta ação não pode ser revertida.",
+			"sv-SE": "Den här kategorin har {0} underkategorier. Om du tar bort den tas även dessa bort. Ämnen som tillhörde den här kategorin finns fortfarande under Alla diskussioner. Denna åtgärd kan inte ångras.",
+			"zh-CN": "此分类下有 {0} 个子分类。删除该分类将同时删除这些子分类。原属于此分类的主题仍可在“所有讨论”中找到。此操作无法撤销。"
 		}
 	},
 	{
