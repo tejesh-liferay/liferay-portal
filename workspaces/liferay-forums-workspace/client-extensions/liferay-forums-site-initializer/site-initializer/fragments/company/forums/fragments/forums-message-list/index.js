@@ -529,9 +529,7 @@ if (messageList) {
 		}
 
 		const allLabel =
-			messageList.dataset.labelAllCategories ||
-			messageList.dataset.labelAllMessages ||
-			'All Discussions';
+			messageList.dataset.labelAllMessages || 'All Discussions';
 		const activeLi = breadcrumbName.closest('li');
 
 		/* Drop ancestor crumbs from a previous render */
