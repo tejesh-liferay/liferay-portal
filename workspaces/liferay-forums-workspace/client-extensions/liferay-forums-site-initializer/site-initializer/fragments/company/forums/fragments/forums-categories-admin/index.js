@@ -805,7 +805,7 @@ if (forumsCategoriesAdmin) {
 	const deleteCategory = function (deleteUrl, id, subcategoryCount) {
 		let message =
 			forumsCategoriesAdmin.dataset.labelConfirmDelete ||
-			'Are you sure you want to delete this category?';
+			'Are you sure you want to delete this category? Topics that used to belong to this category can still be found in All Discussions. This action cannot be reverted.';
 
 		/* Deleting a category cascades to its subcategories, but no longer to
 		   any threads — categorization is a tag, not ownership, so a deleted

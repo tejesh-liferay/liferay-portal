@@ -308,19 +308,19 @@
 	{
 		"key": "confirm-delete-category",
 		"value": {
-			"ar-SA": "هل أنت متأكد من رغبتك في حذف هذه الفئة؟",
-			"ca-ES": "Esteu segur que voleu suprimir aquesta categoria?",
-			"de-DE": "Möchten Sie diese Kategorie wirklich löschen?",
-			"en-US": "Are you sure you want to delete this category?",
-			"es-ES": "¿Seguro que desea eliminar esta categoría?",
-			"fi-FI": "Haluatko varmasti poistaa tämän kategorian?",
-			"fr-FR": "Voulez-vous vraiment supprimer cette catégorie ?",
-			"hu-HU": "Biztosan törölni szeretné ezt a kategóriát?",
-			"ja-JP": "このカテゴリを削除してもよろしいですか？",
-			"nl-NL": "Weet u zeker dat u deze categorie wilt verwijderen?",
-			"pt-BR": "Tem certeza de que deseja excluir esta categoria?",
-			"sv-SE": "Är du säker på att du vill ta bort den här kategorin?",
-			"zh-CN": "确定要删除此分类吗？"
+			"ar-SA": "هل أنت متأكد من رغبتك في حذف هذه الفئة؟ لا يزال بإمكانك العثور على المواضيع التي كانت تنتمي إلى هذه الفئة في \"جميع المناقشات\". لا يمكن التراجع عن هذا الإجراء.",
+			"ca-ES": "Esteu segur que voleu suprimir aquesta categoria? Els temes que pertanyien a aquesta categoria encara es poden trobar a Totes les discussions. Aquesta acció no es pot desfer.",
+			"de-DE": "Möchten Sie diese Kategorie wirklich löschen? Themen, die zu dieser Kategorie gehörten, finden Sie weiterhin unter Alle Diskussionen. Diese Aktion kann nicht rückgängig gemacht werden.",
+			"en-US": "Are you sure you want to delete this category? Topics that used to belong to this category can still be found in All Discussions. This action cannot be reverted.",
+			"es-ES": "¿Seguro que desea eliminar esta categoría? Los temas que pertenecían a esta categoría todavía se pueden encontrar en Todas las discusiones. Esta acción no se puede deshacer.",
+			"fi-FI": "Haluatko varmasti poistaa tämän kategorian? Tähän kategoriaan kuuluneet aiheet löytyvät edelleen kohdasta Kaikki keskustelut. Tätä toimintoa ei voi peruuttaa.",
+			"fr-FR": "Voulez-vous vraiment supprimer cette catégorie ? Les sujets qui appartenaient à cette catégorie restent accessibles dans Toutes les discussions. Cette action est irréversible.",
+			"hu-HU": "Biztosan törölni szeretné ezt a kategóriát? Az ebbe a kategóriába tartozott témák továbbra is megtalálhatók az Összes beszélgetés oldalon. Ez a művelet nem vonható vissza.",
+			"ja-JP": "このカテゴリを削除してもよろしいですか？このカテゴリに属していたトピックは、引き続き「すべてのディスカッション」で確認できます。この操作は元に戻せません。",
+			"nl-NL": "Weet u zeker dat u deze categorie wilt verwijderen? Onderwerpen die bij deze categorie hoorden, zijn nog steeds te vinden in Alle discussies. Deze actie kan niet ongedaan worden gemaakt.",
+			"pt-BR": "Tem certeza de que deseja excluir esta categoria? Os tópicos que pertenciam a esta categoria ainda podem ser encontrados em Todas as discussões. Esta ação não pode ser revertida.",
+			"sv-SE": "Är du säker på att du vill ta bort den här kategorin? Ämnen som tillhörde den här kategorin finns fortfarande under Alla diskussioner. Denna åtgärd kan inte ångras.",
+			"zh-CN": "确定要删除此分类吗？原属于此分类的主题仍可在“所有讨论”中找到。此操作无法撤销。"
 		}
 	},
 	{
