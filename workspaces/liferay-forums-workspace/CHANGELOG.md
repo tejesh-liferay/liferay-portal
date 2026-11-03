@@ -19,3 +19,4 @@ Every entry names the LPD issue of the change. See [Versions](README.md#versions
 - Title the unfiltered discussions list All Discussions, the name the delete-category dialog refers to (LPD-113631).
 - Use the singular when a deleted category has one subcategory (LPD-113632).
 - Say that deleting a category without subcategories keeps its topics (LPD-113634).
+- Sort topics without a last post date by their creation date in Recent Activity, instead of above all other topics on PostgreSQL and Oracle. New topics get their creation date as the last post date, and the microservice fills it in for existing topics each time it starts (LPD-113650).

@@ -58,6 +58,8 @@ Copy `liferay-forums-batch.zip` into `<liferay-home>/osgi/client-extensions`. It
 
 Keep the microservice running whenever Liferay is running, for example as a system service. Forum posting, notifications, and moderation depend on it.
 
+Each time it starts, the microservice gives every topic that has no last post date, such as one created while it was not running or through the API without an opening message, its creation date as the last post date, so that **Recent Activity** sorts it by when it was created.
+
 The start scripts stop with a message, rather than starting half configured, when neither `LIFERAY_HOME` nor `application.properties` is set up, or when `LIFERAY_HOME` does not contain the microservice's credentials, which means the zip was not deployed to that Liferay yet.
 
 ### On the Liferay Machine

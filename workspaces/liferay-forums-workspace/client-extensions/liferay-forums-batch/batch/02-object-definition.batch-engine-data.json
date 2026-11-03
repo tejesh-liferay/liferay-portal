@@ -588,6 +588,19 @@
 			"objectActions": [
 				{
 					"active": true,
+					"externalReferenceCode": "C2M0_THREAD_DEFAULT_LAST_POST_DATE_ACTION",
+					"label": {
+						"en_US": "Default Last Post Date"
+					},
+					"name": "c2m0ThreadDefaultLastPostDate",
+					"objectActionExecutorKey": "function#liferay-forums-etc-spring-boot-object-action-default-thread-last-post-date",
+					"objectActionTriggerKey": "onAfterAdd",
+					"parameters": {
+					},
+					"system": false
+				},
+				{
+					"active": true,
 					"externalReferenceCode": "C2M0_THREAD_ENFORCE_PRIORITY_ON_ADD_ACTION",
 					"label": {
 						"en_US": "Enforce Priority on Add"

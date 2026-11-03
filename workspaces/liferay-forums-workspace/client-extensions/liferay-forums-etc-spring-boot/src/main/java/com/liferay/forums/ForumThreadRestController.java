@@ -46,6 +46,35 @@ public class ForumThreadRestController extends BaseRestController {
 	// acting user's, so a priority change by anyone who cannot moderate the
 	// forum is reverted to the value it had before.
 
+	@PostMapping("/object-action/default-thread-last-post-date")
+	public ResponseEntity<String> onDefaultThreadLastPostDate(
+			@AuthenticationPrincipal Jwt jwt, @RequestBody String json)
+		throws Exception {
+
+		if (jwt != null) {
+			log(jwt, _log, json);
+		}
+		else if (_log.isInfoEnabled()) {
+			_log.info(json);
+		}
+
+		String authToken = _serviceAuthToken();
+
+		long threadId = new JSONObject(
+			json
+		).optLong(
+			"classPK", 0L
+		);
+
+		_forumNotificationExecutor.execute(
+			() -> _fanOut(
+				"default-thread-last-post-date",
+				() -> _forumThreadService.setMissingLastPostDate(
+					threadId, authToken)));
+
+		return new ResponseEntity<>(json, HttpStatus.OK);
+	}
+
 	@PostMapping("/object-action/enforce-thread-priority")
 	public ResponseEntity<String> onEnforceThreadPriority(
 			@AuthenticationPrincipal Jwt jwt, @RequestBody String json)
