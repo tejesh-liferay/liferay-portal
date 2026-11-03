@@ -3,6 +3,40 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
+/* The site's public URL prefix, /web/<friendly URL>, taken from the current
+   page's path after any locale prefix such as /de or /pt-BR. Links to the
+   site's pages are built on it rather than on the site's name, which only
+   matches the friendly URL by chance. It is empty on a virtual host, where the
+   site's pages are at the root. */
+const forumsSitePrefix = function () {
+	const pathFriendlyURLPublic =
+		Liferay.ThemeDisplay.getPathFriendlyURLPublic();
+
+	if (!pathFriendlyURLPublic) {
+		return '';
+	}
+
+	const pubPath = pathFriendlyURLPublic + '/';
+	const {pathname} = window.location;
+	const localeMatch = pathname.match(/^\/[a-zA-Z]{2}(?:-[a-zA-Z]{2})?(?=\/)/);
+	const pathAfterLocale = pathname.substring(
+		localeMatch ? localeMatch[0].length : 0
+	);
+
+	if (pathAfterLocale.indexOf(pubPath) !== 0) {
+		return '';
+	}
+
+	const rest = pathAfterLocale.substring(pubPath.length);
+	const slugEnd = rest.indexOf('/');
+
+	return (
+		pathFriendlyURLPublic +
+		'/' +
+		(slugEnd === -1 ? rest : rest.substring(0, slugEnd))
+	);
+};
+
 /* The forums fragments on one page load some of the same resources (the
    user's site roles, the Forum Banned role, the current thread). Share one
    GET per URL across them for the life of the page; every caller gets its
@@ -45,19 +79,7 @@ const messageDetail = fragmentElement.querySelector('#forumsMessageDetail');
 if (messageDetail) {
 	const portalURL = Liferay.ThemeDisplay.getPortalURL();
 	const scopeGroupId = Liferay.ThemeDisplay.getScopeGroupId();
-	const pathFriendlyURLPublic =
-		Liferay.ThemeDisplay.getPathFriendlyURLPublic();
-	let sitePrefix = '';
-	if (pathFriendlyURLPublic) {
-		const pubPath = pathFriendlyURLPublic + '/';
-		const {pathname} = window.location;
-		if (pathname.indexOf(pubPath) === 0) {
-			const rest = pathname.substring(pubPath.length);
-			const slugEnd = rest.indexOf('/');
-			const siteSlug = slugEnd === -1 ? rest : rest.substring(0, slugEnd);
-			sitePrefix = pathFriendlyURLPublic + '/' + siteSlug;
-		}
-	}
+	const sitePrefix = forumsSitePrefix();
 	const currentUserId = Liferay.ThemeDisplay.getUserId();
 
 	/* Mentions render in the OOTB shape -- a "@screenName" token in a

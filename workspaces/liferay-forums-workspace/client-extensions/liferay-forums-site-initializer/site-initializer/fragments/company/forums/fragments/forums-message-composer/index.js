@@ -5,6 +5,40 @@
 
 /* global CKEDITOR, fragmentElementId */
 
+/* The site's public URL prefix, /web/<friendly URL>, taken from the current
+   page's path after any locale prefix such as /de or /pt-BR. Links to the
+   site's pages are built on it rather than on the site's name, which only
+   matches the friendly URL by chance. It is empty on a virtual host, where the
+   site's pages are at the root. */
+const forumsSitePrefix = function () {
+	const pathFriendlyURLPublic =
+		Liferay.ThemeDisplay.getPathFriendlyURLPublic();
+
+	if (!pathFriendlyURLPublic) {
+		return '';
+	}
+
+	const pubPath = pathFriendlyURLPublic + '/';
+	const {pathname} = window.location;
+	const localeMatch = pathname.match(/^\/[a-zA-Z]{2}(?:-[a-zA-Z]{2})?(?=\/)/);
+	const pathAfterLocale = pathname.substring(
+		localeMatch ? localeMatch[0].length : 0
+	);
+
+	if (pathAfterLocale.indexOf(pubPath) !== 0) {
+		return '';
+	}
+
+	const rest = pathAfterLocale.substring(pubPath.length);
+	const slugEnd = rest.indexOf('/');
+
+	return (
+		pathFriendlyURLPublic +
+		'/' +
+		(slugEnd === -1 ? rest : rest.substring(0, slugEnd))
+	);
+};
+
 /* The forums fragments on one page load some of the same resources (the
    user's site roles, the Forum Banned role, the current thread). Share one
    GET per URL across them for the life of the page; every caller gets its
@@ -1560,7 +1594,7 @@ if (messageComposer) {
 						return r.json();
 					})
 					.then((msg) => {
-						const {friendlyUrlPath, id: threadId, scopeKey} = msg;
+						const {friendlyUrlPath, id: threadId} = msg;
 
 						const msgPayload = {
 							body,
@@ -1655,13 +1689,8 @@ if (messageComposer) {
 										.labelQuestionPosted ||
 										'Your question has been posted!'
 								);
-								const siteSlug = (scopeKey || '')
-									.toLowerCase()
-									.replace(/ /g, '-');
 								spaNavigate(
-									Liferay.ThemeDisplay.getPathFriendlyURLPublic() +
-										'/' +
-										siteSlug +
+									forumsSitePrefix() +
 										'/c_c2m0thread/' +
 										friendlyUrlPath
 								);
