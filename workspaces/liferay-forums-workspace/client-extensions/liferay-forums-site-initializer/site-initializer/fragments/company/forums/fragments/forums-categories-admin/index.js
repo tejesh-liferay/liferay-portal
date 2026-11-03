@@ -812,9 +812,13 @@ if (forumsCategoriesAdmin) {
 		   category's threads simply lose that tag. */
 		if (subcategoryCount > 0) {
 			const cascadeMsg =
-				forumsCategoriesAdmin.dataset
-					.labelConfirmDeleteCategoryWithSubcategories ||
-				'This category has {0} subcategories. Deleting it will also delete them. Topics that used to belong to this category can still be found in All Discussions. This action cannot be reverted.';
+				subcategoryCount === 1
+					? forumsCategoriesAdmin.dataset
+							.labelConfirmDeleteCategoryWithSubcategory ||
+						'This category has {0} subcategory. Deleting it will also delete the subcategory. Topics that used to belong to this category can still be found in All Discussions. This action cannot be reverted.'
+					: forumsCategoriesAdmin.dataset
+							.labelConfirmDeleteCategoryWithSubcategories ||
+						'This category has {0} subcategories. Deleting it will also delete them. Topics that used to belong to this category can still be found in All Discussions. This action cannot be reverted.';
 			message = cascadeMsg.replace('{0}', subcategoryCount);
 		}
 
