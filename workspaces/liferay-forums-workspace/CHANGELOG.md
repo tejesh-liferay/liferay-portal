@@ -20,3 +20,4 @@ Every entry names the LPD issue of the change. See [Versions](README.md#versions
 - Use the singular when a deleted category has one subcategory (LPD-113632).
 - Say that deleting a category without subcategories keeps its topics (LPD-113634).
 - Sort topics without a last post date by their creation date in Recent Activity, instead of above all other topics on PostgreSQL and Oracle. New topics get their creation date as the last post date, and the microservice fills it in for existing topics each time it starts (LPD-113650).
+- Keep the From, From Name and To of the reply and mention email templates when `liferay-forums-batch.zip` is deployed again, instead of resetting them to the placeholder `forums-noreply@example.xyz`. The batch now only adds these two templates when they do not exist, and the README says to set their addresses. On an existing installation, check both templates after upgrading, since they keep whatever they hold today (LPD-113666).

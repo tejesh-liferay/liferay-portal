@@ -4,7 +4,7 @@ Liferay Forums is delivered as three client extension zips and one script:
 
 | File | What It Does |
 | --- | --- |
-| `liferay-forums-batch.zip` | Creates the object folder, object definitions, and notification templates. |
+| `liferay-forums-batch.zip` | Creates the object folder, object definitions, notification templates, and search blueprint. |
 | `liferay-forums-etc-spring-boot.zip` | The microservice behind the forum's object actions and validations (notifications, bans, locks, thread priority). Deployed to Liferay and also run on its own. |
 | `liferay-forums-site-initializer.zip` | Creates one forums site with its pages, fragments, and permissions. |
 | `generate-site-initializer-zips.sh` | Makes one copy of the site initializer zip per site, for installing several forums sites. |
@@ -41,6 +41,18 @@ To recover from either, deploy the affected zip again: delete it from `<liferay-
 ## 1. Deploy the Batch
 
 Copy `liferay-forums-batch.zip` into `<liferay-home>/osgi/client-extensions`. It creates the objects the other zips depend on, so wait until its import finishes in the Liferay log before continuing.
+
+### Configure Email Notifications
+
+The batch creates two email notification templates, **C2M0 Notification Email Reply** and **C2M0 Notification Email Mention**, sent from and to the placeholder address `forums-noreply@example.xyz`. Before the forum sends any email:
+
+1. In *Applications* → *Notification Templates*, open each of the two templates and set **From** and **To** to an address of a domain the site owns, and **From Name** to the name shown to recipients. Recipients are always added in BCC, so **To** only receives a copy.
+
+1. In *Control Panel* → *Instance Settings* → *Email* → *Email Sender*, set the address Liferay sends email from, which every Liferay email needs.
+
+1. If the microservice is already running, restart it. It reads the two templates once and keeps using them until it restarts.
+
+Deploying `liferay-forums-batch.zip` again only adds these two templates when they do not exist, so the addresses survive upgrades. Because they already exist, each later deployment logs `Duplicate notification template with external reference code C2M0_NOTIFICATION_EMAIL_REPLY` and marks that import task as failed; this is expected and changes nothing. It also means that a change to their wording in a newer release does not reach an existing installation; the changelog says when to update them by hand.
 
 ## 2. Deploy and Start the Microservice
 
