@@ -11,6 +11,15 @@ Liferay Forums is delivered as three client extension zips and one script:
 
 `<liferay-home>` below is the Liferay installation directory, the one that contains `osgi` and `routes`.
 
+## Versions
+
+Liferay Forums has its own version, independent of the Liferay DXP version. Install the zips of a release from its GitHub release, which holds the three zips built from the release's tag. [CHANGELOG.md](CHANGELOG.md) lists what each release changes.
+
+| Liferay Forums | Liferay DXP |
+| --- | --- |
+| 1.0.0 (unreleased) | 2026.Q1.4 LTS with hotfix 84 |
+
+
 ## Requirements
 
 - A self-hosted Liferay DXP. On Liferay DXP 2026.Q1, see [On Liferay DXP 2026.Q1](#on-liferay-dxp-2026q1) first.
