@@ -144,6 +144,7 @@ A site initializer zip creates exactly one site, so each site needs its own copy
 	declare -A SITES=(
 		[LIFERAY_ACME]="Acme, Inc. site"
 		[LIFERAY_NORTHWIND]="Northwind site"
+		[LIFERAY_RAY]="Ray site"
 	)
 	```
 
@@ -158,6 +159,7 @@ A site initializer zip creates exactly one site, so each site needs its own copy
 	```
 	out/liferay-forums-site-initializer-liferay-acme.zip
 	out/liferay-forums-site-initializer-liferay-northwind.zip
+	out/liferay-forums-site-initializer-liferay-ray.zip
 	```
 
 1. Copy the generated zips into `<liferay-home>/osgi/client-extensions`, or let the script copy them as it writes them by adding `--deploy`:
@@ -167,6 +169,8 @@ A site initializer zip creates exactly one site, so each site needs its own copy
 	```
 
 Deploy the generated zips instead of `liferay-forums-site-initializer.zip`, unless the `FORUMS` site is wanted as well.
+
+Liferay makes each site's URL from its name, so `Acme, Inc. site` is served at `/web/acme-inc.-site`. To use another URL, give the site a different name in `SITES`, or change its friendly URL in *Site Settings* after it is created.
 
 The script takes these options:
 
