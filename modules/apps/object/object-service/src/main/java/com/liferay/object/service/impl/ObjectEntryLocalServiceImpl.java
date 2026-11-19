@@ -74,6 +74,7 @@ import com.liferay.object.entry.util.ObjectEntryThreadLocal;
 import com.liferay.object.entry.util.ObjectEntryValuesUtil;
 import com.liferay.object.exception.DuplicateObjectEntryExternalReferenceCodeException;
 import com.liferay.object.exception.NoSuchObjectDefinitionException;
+import com.liferay.object.exception.NoSuchObjectEntryException;
 import com.liferay.object.exception.ObjectDefinitionScopeException;
 import com.liferay.object.exception.ObjectEntryDefaultLanguageIdException;
 import com.liferay.object.exception.ObjectEntryExpirationDateException;
@@ -187,6 +188,7 @@ import com.liferay.portal.kernel.dao.jdbc.CurrentConnection;
 import com.liferay.portal.kernel.dao.orm.ActionableDynamicQuery;
 import com.liferay.portal.kernel.dao.orm.EntityCacheUtil;
 import com.liferay.portal.kernel.dao.orm.FinderCacheUtil;
+import com.liferay.portal.kernel.dao.orm.LockMode;
 import com.liferay.portal.kernel.dao.orm.Property;
 import com.liferay.portal.kernel.dao.orm.PropertyFactoryUtil;
 import com.liferay.portal.kernel.dao.orm.QueryUtil;
@@ -6722,6 +6724,22 @@ public class ObjectEntryLocalServiceImpl
 		return false;
 	}
 
+	private boolean _hasLocalizedValues(
+		List<ObjectField> objectFields, Map<String, Serializable> values) {
+
+		for (ObjectField objectField : objectFields) {
+			if (objectField.isLocalized() &&
+				MapUtil.isNotEmpty(
+					(Map<String, Serializable>)values.get(
+						objectField.getI18nObjectFieldName()))) {
+
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	private boolean _hasTableName(Predicate predicate, String tableName) {
 		if (predicate == null) {
 			return false;
@@ -7308,6 +7326,32 @@ public class ObjectEntryLocalServiceImpl
 
 		return _addObjectRelationshipERCFieldValues(
 			objectFields, objectEntries);
+	}
+
+	private ObjectEntry _lockObjectEntry(long objectEntryId)
+		throws PortalException {
+
+		Session session = objectEntryPersistence.openSession();
+
+		try {
+			session.flush();
+
+			session.evict(ObjectEntryImpl.class, objectEntryId);
+
+			ObjectEntry objectEntry = (ObjectEntry)session.get(
+				ObjectEntryImpl.class, objectEntryId, LockMode.UPGRADE);
+
+			if (objectEntry == null) {
+				throw new NoSuchObjectEntryException(
+					"No ObjectEntry exists with the primary key " +
+						objectEntryId);
+			}
+
+			return objectEntry;
+		}
+		finally {
+			objectEntryPersistence.closeSession(session);
+		}
 	}
 
 	private ObjectEntry _moveObjectEntryToTrash(
@@ -8439,10 +8483,7 @@ public class ObjectEntryLocalServiceImpl
 
 		User user = _userLocalService.getUser(userId);
 
-		ObjectEntry objectEntry = objectEntryPersistence.findByPrimaryKey(
-			objectEntryId);
-
-		objectEntry = objectEntryPersistence.reassociateIfAbsent(objectEntry);
+		ObjectEntry objectEntry = _lockObjectEntry(objectEntryId);
 
 		_validateObjectEntryFolderId(
 			objectEntry.getGroupId(), objectEntryFolderId);
@@ -8510,10 +8551,18 @@ public class ObjectEntryLocalServiceImpl
 			insertedValues.put(entry.getKey(), value);
 		}
 
+		boolean updateLocalizationTable = false;
+
+		if (!partialUpdate || _hasLocalizedValues(objectFields, values)) {
+			updateLocalizationTable = true;
+		}
+
 		for (ObjectField objectField : objectFields) {
 			if (objectField.isLocalized()) {
-				insertedValues.remove(objectField.getI18nObjectFieldName());
-				insertedValues.remove(objectField.getName());
+				if (updateLocalizationTable) {
+					insertedValues.remove(objectField.getI18nObjectFieldName());
+					insertedValues.remove(objectField.getName());
+				}
 			}
 			else if (Objects.equals(
 						objectField.getRelationshipType(),
@@ -8527,12 +8576,14 @@ public class ObjectEntryLocalServiceImpl
 			}
 		}
 
-		_deleteFromLocalizationTable(objectDefinition, objectEntryId);
+		if (updateLocalizationTable) {
+			_deleteFromLocalizationTable(objectDefinition, objectEntryId);
 
-		_insertIntoLocalizationTable(
-			objectEntry.getDefaultLanguageId(), insertedValues,
-			objectDefinition, objectEntryId, transientValues, partialUpdate,
-			values);
+			_insertIntoLocalizationTable(
+				objectEntry.getDefaultLanguageId(), insertedValues,
+				objectDefinition, objectEntryId, transientValues, partialUpdate,
+				values);
+		}
 
 		boolean staticValues = _updateTable(
 			DynamicObjectDefinitionTableUtil.getDynamicObjectDefinitionTable(
